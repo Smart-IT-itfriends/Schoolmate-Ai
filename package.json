@@ -1,0 +1,20 @@
+{
+  "name": "schoolmate-ai-bot",
+  "version": "1.0.0",
+  "description": "Telegram bot for educational assistance",
+  "main": "bot.js",
+  "scripts": {
+    "start": "node bot.js",
+    "dev": "nodemon bot.js"
+  },
+  "keywords": ["telegram", "bot", "education"],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "node-telegram-bot-api": "^0.61.0",
+    "dotenv": "^16.3.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  }
+}
