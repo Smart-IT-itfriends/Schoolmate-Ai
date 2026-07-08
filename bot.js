@@ -1,205 +1,349 @@
+require('dotenv').config();
+const fs = require('fs');
+const path = require('path');
 const TelegramBot = require('node-telegram-bot-api');
 const config = require('./config');
+const { getSubjectsForClass, getAllSubjects } = require('./subjects');
 
-// Create bot instance
-const bot = new TelegramBot(config.TELEGRAM_TOKEN, { polling: true });
+const USERS_FILE = path.join(__dirname, 'data', 'users.json');
+const token = process.env.TELEGRAM_TOKEN || process.env.BOT_TOKEN;
 
-// Store user states
+if (!token) {
+  console.error('Помилка: встановіть TELEGRAM_TOKEN у файлі .env');
+  process.exit(1);
+}
+
+const bot = new TelegramBot(token, { polling: true });
 const userStates = {};
+const allSubjects = getAllSubjects();
 
-// Define keyboard buttons
 const mainKeyboard = {
   reply_markup: {
     keyboard: [
-      ['📚 Пояснити тему', '📝 Підготовка до контрольної'],
-      ['🧠 Створити тест', '📈 Мій прогрес'],
-      ['⚙️ Допомога']
+      ['📚 Пояснити тему', '🧠 Створити тест'],
+      ['📈 Мій прогрес', '📖 Предмети'],
+      ['⚙️ Допомога', '🔄 Перереєструватися'],
     ],
     resize_keyboard: true,
-    one_time_keyboard: false
-  }
+    one_time_keyboard: false,
+  },
 };
 
 const backKeyboard = {
   reply_markup: {
-    keyboard: [
-      ['⬅️ Повернутися в меню']
-    ],
-    resize_keyboard: true
-  }
+    keyboard: [['⬅️ Повернутися в меню']],
+    resize_keyboard: true,
+  },
 };
 
-// Start command
-bot.onText(/\/start/, (msg) => {
-  const chatId = msg.chat.id;
+function buildSubjectActionKeyboard() {
+  return {
+    reply_markup: {
+      keyboard: [
+        ['📚 Пояснити тему', '🧠 Створити тест'],
+        ['📋 Головне меню'],
+      ],
+      resize_keyboard: true,
+      one_time_keyboard: false,
+    },
+  };
+}
+
+function getActionKeyboard(session) {
+  if (session.selectedSubject) {
+    return buildSubjectActionKeyboard();
+  }
+
+  return backKeyboard;
+}
+
+function loadUsers() {
+  try {
+    const data = fs.readFileSync(USERS_FILE, 'utf8');
+    return JSON.parse(data || '{}');
+  } catch {
+    return {};
+  }
+}
+
+function saveUsers(users) {
+  fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2), 'utf8');
+}
+
+function getSession(userId) {
+  const users = loadUsers();
+  return users[String(userId)] || null;
+}
+
+function saveSession(userId, session) {
+  const users = loadUsers();
+  users[String(userId)] = session;
+  saveUsers(users);
+}
+
+function buildSubjectsKeyboard(classNum) {
+  const subjects = getSubjectsForClass(classNum);
+  const rows = [];
+
+  for (let i = 0; i < subjects.length; i += 2) {
+    rows.push(subjects.slice(i, i + 2));
+  }
+
+  rows.push(['📋 Головне меню', '🔄 Перереєструватися']);
+
+  return {
+    reply_markup: {
+      keyboard: rows,
+      resize_keyboard: true,
+      one_time_keyboard: false,
+    },
+  };
+}
+
+function showSubjectsMenu(chatId, session) {
+  const subjects = getSubjectsForClass(session.class);
+
   bot.sendMessage(
     chatId,
-    config.messages.start,
+    `📚 Предмети для ${session.class}-го класу:\n\n${subjects.map((s) => `• ${s}`).join('\n')}\n\nОбери предмет:`,
+    buildSubjectsKeyboard(session.class)
+  );
+}
+
+function showMainMenu(chatId, session) {
+  userStates[chatId] = 'main_menu';
+
+  bot.sendMessage(
+    chatId,
+    `Привіт, ${session.name}! 👋\n\n${config.messages.start}`,
     mainKeyboard
   );
+}
+
+function startRegistration(chatId, user, isReregister = false) {
+  delete userStates[chatId];
+
+  const session = {
+    step: 'name',
+    name: null,
+    class: null,
+    selectedSubject: null,
+    telegramId: user.id,
+    username: user.username || null,
+    startedAt: new Date().toISOString(),
+  };
+
+  saveSession(user.id, session);
+
+  const message = isReregister
+    ? '🔄 Давай оновимо твої дані.\n\nЯк тебе звати?'
+    : '👋 Привіт! Я Schoolmate AI.\n\nЯк тебе звати?';
+
+  bot.sendMessage(chatId, message, {
+    reply_markup: { remove_keyboard: true },
+  });
+}
+
+function getSubjectHint(session) {
+  return session.selectedSubject
+    ? `\n\nПредмет: <b>${session.selectedSubject}</b>`
+    : '';
+}
+
+function askForTopic(chatId, session, state, message) {
+  userStates[chatId] = state;
+
+  bot.sendMessage(chatId, message + getSubjectHint(session), {
+    parse_mode: 'HTML',
+    ...getActionKeyboard(session),
+  });
+}
+
+function isSubjectForUser(session, text) {
+  if (!session || session.step !== 'completed') {
+    return false;
+  }
+
+  return getSubjectsForClass(session.class).includes(text);
+}
+
+bot.onText(/\/start/, (msg) => {
+  const chatId = msg.chat.id;
+  const user = msg.from;
+  const session = getSession(user.id);
+
+  if (session && session.step === 'completed') {
+    showSubjectsMenu(chatId, session);
+    return;
+  }
+
+  startRegistration(chatId, user);
 });
 
-// Handle button presses
 bot.on('message', (msg) => {
+  if (!msg.text || msg.text.startsWith('/')) {
+    return;
+  }
+
   const chatId = msg.chat.id;
-  const text = msg.text;
+  const userId = msg.from.id;
+  const text = msg.text.trim();
+  const session = getSession(userId);
+
+  if (!session) {
+    bot.sendMessage(chatId, 'Натисни /start, щоб почати.');
+    return;
+  }
+
+  if (session.step === 'name') {
+    if (text.length < 2) {
+      bot.sendMessage(chatId, 'Будь ласка, введи своє ім\'я (мінімум 2 символи).');
+      return;
+    }
+
+    session.name = text;
+    session.step = 'class';
+    saveSession(userId, session);
+
+    bot.sendMessage(
+      chatId,
+      `Приємно познайомитись, ${text}! 😊\n\nВ якому класі ти навчаєшся? (1–11)`
+    );
+    return;
+  }
+
+  if (session.step === 'class') {
+    const classNum = parseInt(text, 10);
+
+    if (Number.isNaN(classNum) || classNum < 1 || classNum > 11) {
+      bot.sendMessage(chatId, 'Введи число від 1 до 11.');
+      return;
+    }
+
+    session.class = classNum;
+    session.step = 'completed';
+    session.completedAt = new Date().toISOString();
+    saveSession(userId, session);
+
+    bot.sendMessage(
+      chatId,
+      `Чудово, ${session.name}! 🎓\nТи у ${classNum}-му класі.\n\nОсь твої шкільні предмети:`
+    );
+
+    showSubjectsMenu(chatId, session);
+    return;
+  }
+
+  if (text === '📋 Головне меню') {
+    showMainMenu(chatId, session);
+    return;
+  }
+
+  if (text === '📖 Предмети') {
+    showSubjectsMenu(chatId, session);
+    return;
+  }
+
+  if (text === '🔄 Перереєструватися') {
+    startRegistration(chatId, msg.from, true);
+    return;
+  }
+
+  if (isSubjectForUser(session, text)) {
+    session.selectedSubject = text;
+    saveSession(userId, session);
+    userStates[chatId] = 'subject_selected';
+
+    bot.sendMessage(
+      chatId,
+      `✅ Обрано предмет: <b>${text}</b>\n\nЩо хочеш зробити?`,
+      {
+        parse_mode: 'HTML',
+        ...buildSubjectActionKeyboard(),
+      }
+    );
+    return;
+  }
 
   if (text === '📚 Пояснити тему') {
-    userStates[chatId] = 'explaining_topic';
-    bot.sendMessage(
-      chatId,
-      config.messages.explainTopic,
-      backKeyboard
-    );
+    askForTopic(chatId, session, 'explaining_topic', config.messages.explainTopic);
+    return;
   }
 
-  else if (text === '📝 Підготовка до контрольної') {
-    userStates[chatId] = 'preparing_test';
-    bot.sendMessage(
-      chatId,
-      config.messages.prepareTest,
-      backKeyboard
-    );
+  if (text === '🧠 Створити тест') {
+    userStates[chatId] = session.selectedSubject ? 'subject_selected' : 'main_menu';
+
+    bot.sendMessage(chatId, config.messages.createTest, {
+      parse_mode: 'HTML',
+      ...getActionKeyboard(session),
+    });
+    return;
   }
 
-  else if (text === '🧠 Створити тест') {
-    userStates[chatId] = 'creating_test';
-    bot.sendMessage(
-      chatId,
-      config.messages.createTest,
-      backKeyboard
-    );
-  }
-
-  else if (text === '📈 Мій прогрес') {
+  if (text === '📈 Мій прогрес') {
     userStates[chatId] = 'viewing_progress';
-    bot.sendMessage(
-      chatId,
-      config.messages.myProgress,
-      backKeyboard
-    );
+    bot.sendMessage(chatId, config.messages.myProgress, backKeyboard);
+    return;
   }
 
-  else if (text === '⚙️ Допомога') {
+  if (text === '⚙️ Допомога') {
     userStates[chatId] = 'viewing_help';
     bot.sendMessage(
       chatId,
       config.messages.help,
       {
         reply_markup: {
-          keyboard: [
-            ['⬅️ Повернутися в меню']
-          ],
-          resize_keyboard: true
-        }
+          keyboard: [['⬅️ Повернутися в меню']],
+          resize_keyboard: true,
+        },
       },
       { parse_mode: 'HTML' }
     );
-  }
-
-  else if (text === '⬅️ Повернутися в меню') {
-    userStates[chatId] = 'main_menu';
-    bot.sendMessage(
-      chatId,
-      'Ти повернувся до головного меню. Виберіть опцію:',
-      mainKeyboard
-    );
-  }
-
-  // Handle user input based on current state
-  else if (userStates[chatId] === 'explaining_topic') {
-    handleExplainTopic(chatId, text);
-  }
-
-  else if (userStates[chatId] === 'preparing_test') {
-    handlePrepareTest(chatId, text);
-  }
-
-  else if (userStates[chatId] === 'creating_test') {
-    handleCreateTest(chatId, text);
-  }
-
-  else if (text === '/start') {
-    // Already handled above
     return;
   }
 
-  else {
-    // Default response
-    bot.sendMessage(chatId, 'Коли ласка, виберіть опцію з меню.');
+  if (text === '⬅️ Повернутися в меню') {
+    showMainMenu(chatId, session);
+    return;
   }
+
+  if (userStates[chatId] === 'explaining_topic') {
+    handleExplainTopic(chatId, text, session);
+    return;
+  }
+
+  if (allSubjects.includes(text)) {
+    bot.sendMessage(
+      chatId,
+      'Цей предмет не входить до твоєї програми. Обери предмет з меню або натисни «📖 Предмети».',
+      buildSubjectsKeyboard(session.class)
+    );
+    return;
+  }
+
+  bot.sendMessage(
+    chatId,
+    'Обери предмет з меню або натисни «📋 Головне меню».',
+    buildSubjectsKeyboard(session.class)
+  );
 });
 
-// Handle "Explain Topic" flow
-function handleExplainTopic(chatId, topic) {
-  const response = `
-📚 <b>Пояснення теми: ${topic}</b>
+function handleExplainTopic(chatId, topic, session) {
+  const subject = session.selectedSubject ? ` (${session.selectedSubject})` : '';
+  userStates[chatId] = 'subject_selected';
 
-Ось основна інформація про цю тему:
-
-<i>Це приклад пояснення. В реальному боті тут буде:
-- Детальне описання теми
-- Приклади
-- Формули
-- Посилання на ресурси</i>
-
-Чи є у тебе ще якісь питання щодо цієї теми?
-  `;
-  
-  bot.sendMessage(chatId, response, {
-    parse_mode: 'HTML',
-    ...backKeyboard
-  });
+  bot.sendMessage(
+    chatId,
+    `📚 <b>Пояснення теми${subject}: ${topic}</b>\n\nОсь основна інформація про цю тему:\n\n<i>Тут буде детальне пояснення від AI.</i>`,
+    {
+      parse_mode: 'HTML',
+      ...getActionKeyboard(session),
+    }
+  );
 }
 
-// Handle "Prepare for Test" flow
-function handlePrepareTest(chatId, subject) {
-  const response = `
-📝 <b>Матеріали для підготовки: ${subject}</b>
-
-Матеріали для підготовки до контрольної:
-
-• Основні поняття
-• Теоретичні основи
-• Типові завдання
-• Тестові питання
-
-Чи хочеш отримати детальніший матеріал?
-  `;
-  
-  bot.sendMessage(chatId, response, {
-    parse_mode: 'HTML',
-    ...backKeyboard
-  });
-}
-
-// Handle "Create Test" flow
-function handleCreateTest(chatId, difficulty) {
-  const response = `
-🧠 <b>Створення тесту (${difficulty})</b>
-
-Тест створюється...
-
-Вибір предмету:
-1️⃣ Математика
-2️⃣ Українська мова
-3️⃣ Історія
-4️⃣ Англійська мова
-5️⃣ Інший предмет
-
-Вкажи номер предмету.
-  `;
-  
-  bot.sendMessage(chatId, response, {
-    parse_mode: 'HTML',
-    ...backKeyboard
-  });
-}
-
-// Error handling
 bot.on('polling_error', (error) => {
   console.error('Polling error:', error);
 });
 
 console.log('🤖 Schoolmate AI Bot запущений і готовий до роботи...');
-console.log('⏳ Чекаю повідомлень...');
