@@ -288,17 +288,13 @@ bot.on('message', (msg) => {
 
   if (text === '⚙️ Допомога') {
     userStates[chatId] = 'viewing_help';
-    bot.sendMessage(
-      chatId,
-      config.messages.help,
-      {
-        reply_markup: {
-          keyboard: [['⬅️ Повернутися в меню']],
-          resize_keyboard: true,
-        },
+    bot.sendMessage(chatId, config.messages.help, {
+      parse_mode: 'HTML',
+      reply_markup: {
+        keyboard: [['⬅️ Повернутися в меню']],
+        resize_keyboard: true,
       },
-      { parse_mode: 'HTML' }
-    );
+    });
     return;
   }
 

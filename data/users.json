@@ -1,12 +1,11 @@
 {
   "8759683710": {
-    "step": "completed",
-    "name": "Максим",
-    "class": 5,
-    "selectedSubject": "Математика",
+    "step": "name",
+    "name": null,
+    "class": null,
+    "selectedSubject": null,
     "telegramId": 8759683710,
     "username": "Max_Misiura",
-    "startedAt": "2026-07-08T16:54:03.762Z",
-    "completedAt": "2026-07-08T16:54:21.256Z"
+    "startedAt": "2026-07-08T17:04:02.965Z"
   }
 }
