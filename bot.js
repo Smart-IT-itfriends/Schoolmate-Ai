@@ -4,8 +4,10 @@ const path = require('path');
 const TelegramBot = require('node-telegram-bot-api');
 const config = require('./config');
 const { getSubjectsForClass, getAllSubjects } = require('./subjects');
-
-const USERS_FILE = path.join(__dirname, 'data', 'users.json');
+const userService = require('./services/userService');
+const keyboards = require('./keyboards');
+const registration = require('./handlers/registration');
+const explainHandler = require('./handlers/explain');
 const token = process.env.TELEGRAM_TOKEN || process.env.BOT_TOKEN;
 
 if (!token) {
@@ -15,89 +17,29 @@ if (!token) {
 
 const bot = new TelegramBot(token, { polling: true });
 const userStates = {};
+bot.userStates = userStates;
 const allSubjects = getAllSubjects();
 
-const mainKeyboard = {
-  reply_markup: {
-    keyboard: [
-      ['📚 Пояснити тему', '🧠 Створити тест'],
-      ['📈 Мій прогрес', '📖 Предмети'],
-      ['⚙️ Допомога', '🔄 Перереєструватися'],
-    ],
-    resize_keyboard: true,
-    one_time_keyboard: false,
-  },
-};
-
-const backKeyboard = {
-  reply_markup: {
-    keyboard: [['⬅️ Повернутися в меню']],
-    resize_keyboard: true,
-  },
-};
-
-function buildSubjectActionKeyboard() {
-  return {
-    reply_markup: {
-      keyboard: [
-        ['📚 Пояснити тему', '🧠 Створити тест'],
-        ['📋 Головне меню'],
-      ],
-      resize_keyboard: true,
-      one_time_keyboard: false,
-    },
-  };
-}
-
-function getActionKeyboard(session) {
-  if (session.selectedSubject) {
-    return buildSubjectActionKeyboard();
-  }
-
-  return backKeyboard;
-}
-
-function loadUsers() {
-  try {
-    const data = fs.readFileSync(USERS_FILE, 'utf8');
-    return JSON.parse(data || '{}');
-  } catch {
-    return {};
-  }
-}
-
-function saveUsers(users) {
-  fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2), 'utf8');
-}
+const { mainKeyboard, backKeyboard } = keyboards;
 
 function getSession(userId) {
-  const users = loadUsers();
-  return users[String(userId)] || null;
+  return userService.getSession(userId);
 }
 
 function saveSession(userId, session) {
-  const users = loadUsers();
-  users[String(userId)] = session;
-  saveUsers(users);
+  return userService.saveSession(userId, session);
 }
 
 function buildSubjectsKeyboard(classNum) {
-  const subjects = getSubjectsForClass(classNum);
-  const rows = [];
+  return keyboards.buildSubjectsKeyboard(classNum);
+}
 
-  for (let i = 0; i < subjects.length; i += 2) {
-    rows.push(subjects.slice(i, i + 2));
-  }
+function buildSubjectActionKeyboard() {
+  return keyboards.buildSubjectActionKeyboard();
+}
 
-  rows.push(['📋 Головне меню', '🔄 Перереєструватися']);
-
-  return {
-    reply_markup: {
-      keyboard: rows,
-      resize_keyboard: true,
-      one_time_keyboard: false,
-    },
-  };
+function getActionKeyboard(session) {
+  return keyboards.getActionKeyboard(session);
 }
 
 function showSubjectsMenu(chatId, session) {
@@ -118,30 +60,6 @@ function showMainMenu(chatId, session) {
     `Привіт, ${session.name}! 👋\n\n${config.messages.start}`,
     mainKeyboard
   );
-}
-
-function startRegistration(chatId, user, isReregister = false) {
-  delete userStates[chatId];
-
-  const session = {
-    step: 'name',
-    name: null,
-    class: null,
-    selectedSubject: null,
-    telegramId: user.id,
-    username: user.username || null,
-    startedAt: new Date().toISOString(),
-  };
-
-  saveSession(user.id, session);
-
-  const message = isReregister
-    ? '🔄 Давай оновимо твої дані.\n\nЯк тебе звати?'
-    : '👋 Привіт! Я Schoolmate AI.\n\nЯк тебе звати?';
-
-  bot.sendMessage(chatId, message, {
-    reply_markup: { remove_keyboard: true },
-  });
 }
 
 function getSubjectHint(session) {
@@ -177,7 +95,7 @@ bot.onText(/\/start/, (msg) => {
     return;
   }
 
-  startRegistration(chatId, user);
+  registration.startRegistration(bot, chatId, user);
 });
 
 bot.on('message', (msg) => {
@@ -245,7 +163,7 @@ bot.on('message', (msg) => {
   }
 
   if (text === '🔄 Перереєструватися') {
-    startRegistration(chatId, msg.from, true);
+    registration.startRegistration(bot, chatId, msg.from, true);
     return;
   }
 
@@ -304,7 +222,7 @@ bot.on('message', (msg) => {
   }
 
   if (userStates[chatId] === 'explaining_topic') {
-    handleExplainTopic(chatId, text, session);
+    explainHandler.handleExplainTopic(bot, chatId, text, session);
     return;
   }
 
@@ -324,19 +242,7 @@ bot.on('message', (msg) => {
   );
 });
 
-function handleExplainTopic(chatId, topic, session) {
-  const subject = session.selectedSubject ? ` (${session.selectedSubject})` : '';
-  userStates[chatId] = 'subject_selected';
 
-  bot.sendMessage(
-    chatId,
-    `📚 <b>Пояснення теми${subject}: ${topic}</b>\n\nОсь основна інформація про цю тему:\n\n<i>Тут буде детальне пояснення від AI.</i>`,
-    {
-      parse_mode: 'HTML',
-      ...getActionKeyboard(session),
-    }
-  );
-}
 
 bot.on('polling_error', (error) => {
   console.error('Polling error:', error);

@@ -7,12 +7,16 @@
     "start": "node bot.js",
     "dev": "nodemon bot.js"
   },
-  "keywords": ["telegram", "bot", "education"],
+  "keywords": [
+    "telegram",
+    "bot",
+    "education"
+  ],
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "node-telegram-bot-api": "^0.66.0",
-    "dotenv": "^16.4.7"
+    "dotenv": "^16.6.1",
+    "node-telegram-bot-api": "^0.66.0"
   },
   "devDependencies": {
     "nodemon": "^3.0.1"
