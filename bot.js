@@ -77,6 +77,35 @@ function askForTopic(chatId, session, state, message) {
   });
 }
 
+function formatIsoDate(dateString) {
+  if (!dateString) return 'Не вказано';
+  const date = new Date(dateString);
+  return date.toLocaleDateString('uk-UA', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  });
+}
+
+function showUserProfile(chatId, session) {
+  const subjectText = session.selectedSubject || 'Не обрано';
+  const registeredAt = formatIsoDate(session.completedAt || session.startedAt);
+  const aiRequests = session.aiRequests || 0;
+
+  const message = `👤 <b>Мій профіль</b>
+
+Ім'я: <b>${session.name}</b>
+Клас: <b>${session.class || 'Не вказано'}</b>
+Обраний предмет: <b>${subjectText}</b>
+Дата реєстрації: <b>${registeredAt}</b>
+Звернень до AI: <b>${aiRequests}</b>`;
+
+  bot.sendMessage(chatId, message, {
+    parse_mode: 'HTML',
+    ...backKeyboard,
+  });
+}
+
 function isSubjectForUser(session, text) {
   if (!session || session.step !== 'completed') {
     return false;
@@ -184,11 +213,15 @@ bot.on('message', (msg) => {
   }
 
   if (text === '📚 Пояснити тему') {
+    session.aiRequests = (session.aiRequests || 0) + 1;
+    saveSession(userId, session);
     askForTopic(chatId, session, 'explaining_topic', config.messages.explainTopic);
     return;
   }
 
   if (text === '🧠 Створити тест') {
+    session.aiRequests = (session.aiRequests || 0) + 1;
+    saveSession(userId, session);
     userStates[chatId] = session.selectedSubject ? 'subject_selected' : 'main_menu';
 
     bot.sendMessage(chatId, config.messages.createTest, {
@@ -201,6 +234,11 @@ bot.on('message', (msg) => {
   if (text === '📈 Мій прогрес') {
     userStates[chatId] = 'viewing_progress';
     bot.sendMessage(chatId, config.messages.myProgress, backKeyboard);
+    return;
+  }
+
+  if (text === '👤 Мій профіль') {
+    showUserProfile(chatId, session);
     return;
   }
 
