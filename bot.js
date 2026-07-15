@@ -133,6 +133,158 @@ function askForTopic(chatId, session, state, message) {
   });
 }
 
+function formatIsoDate(dateString) {
+  if (!dateString) return 'Не вказано';
+  const date = new Date(dateString);
+  return date.toLocaleDateString('uk-UA', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  });
+}
+
+function showUserProfile(chatId, session) {
+  const subjectText = session.selectedSubject || 'Не обрано';
+  const registeredAt = formatIsoDate(session.completedAt || session.startedAt);
+  const aiRequests = session.totalAiRequests || 0;
+  const xp = session.xp || 0;
+  const streak = session.dailyStreak || 0;
+
+  const message = `👤 <b>Мій профіль</b>
+
+Ім'я: <b>${session.name || 'Невідомо'}</b>
+Клас: <b>${session.class || 'Не вказано'}</b>
+Обраний предмет: <b>${subjectText}</b>
+Дата реєстрації: <b>${registeredAt}</b>
+Звернень до AI: <b>${aiRequests}</b>
+XP: <b>${xp}</b>
+Поточний стрік: <b>${streak}</b>`;
+
+  bot.sendMessage(chatId, message, {
+    parse_mode: 'HTML',
+    ...backKeyboard,
+  });
+}
+
+function isSameDay(dateA, dateB) {
+  const a = new Date(dateA);
+  const b = new Date(dateB);
+  return (
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate()
+  );
+}
+
+function isYesterday(dateString) {
+  const date = new Date(dateString);
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  return isSameDay(date, yesterday);
+}
+
+const dailyRewards = [
+  { type: 'XP', amount: 15, chance: 0.5 },
+  { type: 'XP', amount: 30, chance: 0.3 },
+  { type: 'XP', amount: 50, chance: 0.15 },
+  { type: 'BUFF', amount: 'DoubleXP', chance: 0.05 },
+];
+
+function pickDailyReward() {
+  const random = Math.random();
+  let cumulative = 0;
+
+  for (const reward of dailyRewards) {
+    cumulative += reward.chance;
+    if (random <= cumulative) {
+      return reward;
+    }
+  }
+
+  return dailyRewards[dailyRewards.length - 1];
+}
+
+function getRewardText(reward) {
+  if (reward.type === 'XP') {
+    return `+${reward.amount} XP`;
+  }
+
+  if (reward.type === 'BUFF') {
+    return `+${reward.amount} (Подвійний XP для наступного тесту)`;
+  }
+
+  return 'подарунок';
+}
+
+function handleDailyReward(chatId, userId, session) {
+  if (!session || session.step !== 'completed') {
+    bot.sendMessage(chatId, 'Натисни /start, щоб почати.');
+    return;
+  }
+
+  if (session.lastRewardClaimedDate && isSameDay(session.lastRewardClaimedDate, new Date())) {
+    bot.sendMessage(chatId, 'Ти вже забрав свою нагороду сьогодні! Повертайся завтра ⏳', backKeyboard);
+    return;
+  }
+
+  const nextStreak = session.lastRewardClaimedDate && isYesterday(session.lastRewardClaimedDate)
+    ? (session.dailyStreak || 0) + 1
+    : 1;
+
+  session.dailyStreak = nextStreak;
+  session.lastRewardClaimedDate = new Date().toISOString();
+
+  let reward;
+  let bonusText = '';
+
+  if (nextStreak > 0 && nextStreak % 7 === 0) {
+    reward = { type: 'XP', amount: 100 };
+    bonusText = '🎉 Це 7-й день твого стріку!';
+  } else {
+    reward = pickDailyReward();
+  }
+
+  if (reward.type === 'XP') {
+    session.xp = (session.xp || 0) + reward.amount;
+  } else if (reward.type === 'BUFF') {
+    session.activeBuff = reward.amount;
+    session.buffExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+  }
+
+  saveSession(userId, session);
+
+  bot.sendMessage(chatId, '📦 Відкриваємо скриню...');
+
+  setTimeout(() => {
+    bot.sendMessage(chatId, '✨ Заглядаємо всередину...');
+  }, 800);
+
+  setTimeout(() => {
+    const rewardText = getRewardText(reward);
+    const currentXp = session.xp || 0;
+    const message = `🎁 Ти отримав ${rewardText}!\n${bonusText}\n\nТвій поточний XP: <b>${currentXp}</b>\nПоточний стрік: <b>${session.dailyStreak}</b>`;
+
+    bot.sendMessage(chatId, message, {
+      parse_mode: 'HTML',
+      ...backKeyboard,
+    });
+  }, 1600);
+}
+
+function showUserProgress(chatId, session) {
+  const xp = session.xp || 0;
+  const streak = session.dailyStreak || 0;
+  const lastClaim = session.lastRewardClaimedDate ? formatIsoDate(session.lastRewardClaimedDate) : 'Не отримано';
+  const buff = session.activeBuff ? `\nАктивний бонус: <b>${session.activeBuff}</b>` : '';
+
+  const message = `📈 <b>Мій прогрес</b>\n\n🏅 Досвід (XP): <b>${xp}</b>\n🔥 Поточний стрік: <b>${streak}</b>\n🕒 Остання нагорода: <b>${lastClaim}</b>${buff}`;
+
+  bot.sendMessage(chatId, message, {
+    parse_mode: 'HTML',
+    ...backKeyboard,
+  });
+}
+
 function isSubjectForUser(session, text) {
   if (!session || session.step !== 'completed') {
     return false;
@@ -240,11 +392,15 @@ bot.on('message', (msg) => {
   }
 
   if (text === '📚 Пояснити тему') {
+    session.totalAiRequests = (session.totalAiRequests || 0) + 1;
+    saveSession(userId, session);
     askForTopic(chatId, session, 'explaining_topic', config.messages.explainTopic);
     return;
   }
 
   if (text === '🧠 Створити тест') {
+    session.totalAiRequests = (session.totalAiRequests || 0) + 1;
+    saveSession(userId, session);
     userStates[chatId] = session.selectedSubject ? 'subject_selected' : 'main_menu';
 
     bot.sendMessage(chatId, config.messages.createTest, {
@@ -256,6 +412,7 @@ bot.on('message', (msg) => {
 
   if (text === '📈 Мій прогрес') {
     userStates[chatId] = 'viewing_progress';
+<<<<<<< HEAD
     bot.sendMessage(chatId, buildProgressMessage(session), {
       parse_mode: 'HTML',
       reply_markup: {
@@ -275,10 +432,14 @@ bot.on('message', (msg) => {
         resize_keyboard: true,
       },
     });
+=======
+    showUserProgress(chatId, session);
+>>>>>>> 96c3cac293d0dd356d9deeefa85b9fc2008257b1
     return;
   }
 
   if (text === '🎁 Забрати нагороду') {
+<<<<<<< HEAD
     const today = getTodayDateString();
     if (session.lastRewardClaimedDate === today) {
       bot.sendMessage(chatId, config.messages.rewardAlreadyClaimed, backKeyboard);
@@ -307,6 +468,14 @@ bot.on('message', (msg) => {
       );
     }, 1600);
 
+=======
+    handleDailyReward(chatId, userId, session);
+    return;
+  }
+
+  if (text === '👤 Мій профіль') {
+    showUserProfile(chatId, session);
+>>>>>>> 96c3cac293d0dd356d9deeefa85b9fc2008257b1
     return;
   }
 
