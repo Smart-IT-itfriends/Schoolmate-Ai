@@ -412,70 +412,18 @@ bot.on('message', (msg) => {
 
   if (text === '📈 Мій прогрес') {
     userStates[chatId] = 'viewing_progress';
-<<<<<<< HEAD
-    bot.sendMessage(chatId, buildProgressMessage(session), {
-      parse_mode: 'HTML',
-      reply_markup: {
-        keyboard: [['⬅️ Повернутися в меню']],
-        resize_keyboard: true,
-      },
-    });
+    showUserProgress(chatId, session);
     return;
   }
 
   if (text === '👤 Мій профіль') {
     userStates[chatId] = 'viewing_profile';
-    bot.sendMessage(chatId, buildProfileMessage(session), {
-      parse_mode: 'HTML',
-      reply_markup: {
-        keyboard: [['⬅️ Повернутися в меню']],
-        resize_keyboard: true,
-      },
-    });
-=======
-    showUserProgress(chatId, session);
->>>>>>> 96c3cac293d0dd356d9deeefa85b9fc2008257b1
+    showUserProfile(chatId, session);
     return;
   }
 
   if (text === '🎁 Забрати нагороду') {
-<<<<<<< HEAD
-    const today = getTodayDateString();
-    if (session.lastRewardClaimedDate === today) {
-      bot.sendMessage(chatId, config.messages.rewardAlreadyClaimed, backKeyboard);
-      return;
-    }
-
-    const newStreak = session.lastRewardClaimedDate === new Date(Date.now() - 86400000).toISOString().slice(0, 10)
-      ? (session.dailyStreak || 0) + 1
-      : 1;
-
-    const reward = getDailyReward(newStreak);
-    session.xp = (session.xp || 0) + reward.amount;
-    session.lastRewardClaimedDate = today;
-    session.dailyStreak = newStreak;
-    saveSession(userId, session);
-
-    bot.sendMessage(chatId, '📦 Відкриваємо скриню...');
-    setTimeout(() => {
-      bot.sendMessage(chatId, '✨ ...', { parse_mode: 'HTML' });
-    }, 800);
-    setTimeout(() => {
-      bot.sendMessage(
-        chatId,
-        `🎁 <b>Знайдено ${reward.text}!</b>\n\nТвій прогрес оновлено. Тепер у тебе <b>${session.xp}</b> XP.`,
-        { parse_mode: 'HTML', ...backKeyboard }
-      );
-    }, 1600);
-
-=======
     handleDailyReward(chatId, userId, session);
-    return;
-  }
-
-  if (text === '👤 Мій профіль') {
-    showUserProfile(chatId, session);
->>>>>>> 96c3cac293d0dd356d9deeefa85b9fc2008257b1
     return;
   }
 
