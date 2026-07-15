@@ -1,8 +1,13 @@
 const { getActionKeyboard } = require('../keyboards');
+const userService = require('../services/userService');
 
 function handleExplainTopic(bot, chatId, topic, session) {
   const subject = session.selectedSubject ? ` (${session.selectedSubject})` : '';
   bot.userStates[chatId] = 'subject_selected';
+
+  session.aiRequests = (session.aiRequests || 0) + 1;
+  session.lastActivityDate = new Date().toISOString();
+  userService.saveSession(session.telegramId || session.id, session);
 
   bot.sendMessage(
     chatId,

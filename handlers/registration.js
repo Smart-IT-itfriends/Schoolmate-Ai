@@ -6,6 +6,7 @@ function startRegistration(bot, chatId, user, isReregister = false) {
     name: null,
     class: null,
     selectedSubject: null,
+    dailyStreak: 0,
     telegramId: user.id,
     username: user.username || null,
     startedAt: new Date().toISOString(),

@@ -3,10 +3,16 @@
     "step": "completed",
     "name": "Максим",
     "class": 5,
-    "selectedSubject": "Українська мова",
+    "selectedSubject": "Природознавство",
     "telegramId": 8759683710,
     "username": "Max_Misiura",
     "startedAt": "2026-07-14T10:57:06.417Z",
-    "completedAt": "2026-07-14T10:57:22.895Z"
+    "completedAt": "2026-07-14T10:57:22.895Z",
+    "xp": 15,
+    "dailyStreak": 1,
+    "lastRewardClaimedDate": "2026-07-15T09:52:38.118Z",
+    "hasFreezeItem": false,
+    "activeBuff": null,
+    "lastActivityDate": "2026-07-15T09:52:38.118Z"
   }
 }

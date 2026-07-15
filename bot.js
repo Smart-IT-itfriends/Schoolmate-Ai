@@ -30,6 +30,140 @@ function saveSession(userId, session) {
   return userService.saveSession(userId, session);
 }
 
+function formatIsoDate(dateString) {
+  if (!dateString) {
+    return config.messages.profileNoData;
+  }
+
+  const date = new Date(dateString);
+  if (Number.isNaN(date.getTime())) {
+    return config.messages.profileNoData;
+  }
+
+  return date.toLocaleDateString('uk-UA', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  });
+}
+
+function getDateKey(dateInput) {
+  const date = new Date(dateInput);
+  return date.toISOString().split('T')[0];
+}
+
+function isSameDate(firstDate, secondDate) {
+  return getDateKey(firstDate) === getDateKey(secondDate);
+}
+
+function buildReward() {
+  const rewards = [
+    { type: 'XP', amount: 15, chance: 0.5 },
+    { type: 'XP', amount: 30, chance: 0.3 },
+    { type: 'XP', amount: 50, chance: 0.15 },
+    { type: 'BUFF', amount: 'DoubleXP', chance: 0.05 },
+  ];
+
+  const random = Math.random();
+  let accumulator = 0;
+
+  for (const reward of rewards) {
+    accumulator += reward.chance;
+    if (random <= accumulator) {
+      return reward;
+    }
+  }
+
+  return rewards[0];
+}
+
+function getRewardForStreak(streak) {
+  if (streak === 7) {
+    return { type: 'XP', amount: 100, message: '7-й день стріку! +100 XP' };
+  }
+
+  const reward = buildReward();
+  if (reward.type === 'BUFF') {
+    return { ...reward, message: 'Отримано ефект DoubleXP для наступного тесту!' };
+  }
+
+  return { ...reward, message: `Отримано ${reward.amount} XP` };
+}
+
+function showUserProfile(chatId, session) {
+  const subjectText = session.selectedSubject || config.messages.profileNoSubject;
+  const registeredAt = formatIsoDate(session.completedAt || session.startedAt);
+  const aiRequests = session.aiRequests || 0;
+  const xp = session.xp || 0;
+  const streak = session.dailyStreak || 0;
+  const lastReward = session.lastRewardClaimedDate
+    ? formatIsoDate(session.lastRewardClaimedDate)
+    : 'Ще не отримував';
+
+  const message = `${config.messages.profileTitle}Ім'я: <b>${session.name || config.messages.profileNoData}</b>\nКлас: <b>${session.class || config.messages.profileNoData}</b>\nОбраний предмет: <b>${subjectText}</b>\nДата реєстрації: <b>${registeredAt}</b>\nЗвернень до AI: <b>${aiRequests}</b>\nXP: <b>${xp}</b>\nСтрік активності: <b>${streak}</b>\nОстання нагорода: <b>${lastReward}</b>`;
+
+  bot.sendMessage(chatId, message, {
+    parse_mode: 'HTML',
+    ...backKeyboard,
+  });
+}
+
+function canClaimReward(session) {
+  if (!session.lastRewardClaimedDate) {
+    return true;
+  }
+
+  return !isSameDate(session.lastRewardClaimedDate, new Date());
+}
+
+function claimDailyReward(chatId, userId, session) {
+  if (!canClaimReward(session)) {
+    bot.sendMessage(chatId, config.messages.rewardAlreadyClaimed, backKeyboard);
+    return;
+  }
+
+  const todayKey = getDateKey(new Date());
+  const yesterdayKey = getDateKey(Date.now() - 24 * 60 * 60 * 1000);
+  const lastClaimKey = session.lastRewardClaimedDate
+    ? getDateKey(session.lastRewardClaimedDate)
+    : null;
+
+  let streak = 1;
+  if (lastClaimKey === yesterdayKey) {
+    streak = (session.dailyStreak || 0) + 1;
+  }
+
+  if (streak > 7) {
+    streak = 1;
+  }
+
+  const rewardInfo = getRewardForStreak(streak);
+  session.lastRewardClaimedDate = new Date().toISOString();
+  session.dailyStreak = streak;
+  session.lastActivityDate = new Date().toISOString();
+  session.xp = (session.xp || 0) + (rewardInfo.type === 'XP' ? rewardInfo.amount : 0);
+  session.activeBuff = rewardInfo.type === 'BUFF' ? rewardInfo.amount : session.activeBuff || null;
+
+  saveSession(userId, session);
+
+  const resultText = rewardInfo.type === 'BUFF'
+    ? `🎁 ${rewardInfo.message}`
+    : `🎁 ${rewardInfo.message}`;
+
+  bot.sendMessage(chatId, '📦 Відкриваємо скриню...').then(() => {
+    setTimeout(() => {
+      bot.sendMessage(chatId, '✨ Зачекай, шукаємо бонус...');
+      setTimeout(() => {
+        bot.sendMessage(
+          chatId,
+          `${config.messages.rewardClaimed}\n\n${resultText}\n\n${config.messages.rewardResult.replace('%s', rewardInfo.type === 'BUFF' ? '0' : rewardInfo.amount).replace('%s', rewardInfo.type === 'BUFF' ? 'BUFF' : rewardInfo.type).replace('%s', streak)}`,
+          { parse_mode: 'HTML', ...backKeyboard }
+        );
+      }, 800);
+    }, 800);
+  });
+}
+
 function buildSubjectsKeyboard(classNum) {
   return keyboards.buildSubjectsKeyboard(classNum);
 }
@@ -201,6 +335,16 @@ bot.on('message', (msg) => {
   if (text === '📈 Мій прогрес') {
     userStates[chatId] = 'viewing_progress';
     bot.sendMessage(chatId, config.messages.myProgress, backKeyboard);
+    return;
+  }
+
+  if (text === '👤 Мій профіль') {
+    showUserProfile(chatId, session);
+    return;
+  }
+
+  if (text === '🎁 Забрати нагороду') {
+    claimDailyReward(chatId, userId, session);
     return;
   }
 
