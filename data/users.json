@@ -3,10 +3,11 @@
     "step": "completed",
     "name": "Максим",
     "class": 5,
-    "selectedSubject": "Українська мова",
+    "selectedSubject": "Математика",
+    "aiRequests": 0,
     "telegramId": 8759683710,
     "username": "Max_Misiura",
-    "startedAt": "2026-07-14T10:57:06.417Z",
-    "completedAt": "2026-07-14T10:57:22.895Z"
+    "startedAt": "2026-07-15T09:10:11.554Z",
+    "completedAt": "2026-07-15T09:10:19.974Z"
   }
 }
