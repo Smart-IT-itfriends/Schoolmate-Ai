@@ -68,6 +68,62 @@ function getSubjectHint(session) {
     : '';
 }
 
+function getTodayDateString() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function formatDate(isoString) {
+  if (!isoString) {
+    return 'Не вказано';
+  }
+  return new Date(isoString).toLocaleDateString('uk-UA', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  });
+}
+
+function getDailyReward(streak) {
+  const rewardByDay = {
+    1: { type: 'XP', amount: 15, text: '+15 XP' },
+    2: { type: 'XP', amount: 20, text: '+20 XP' },
+    3: { type: 'XP', amount: 25, text: '+25 XP' },
+    4: { type: 'XP', amount: 30, text: '+30 XP' },
+    5: { type: 'XP', amount: 35, text: '+35 XP' },
+    6: { type: 'XP', amount: 40, text: '+40 XP' },
+    7: { type: 'XP', amount: 100, text: '+100 XP' },
+  };
+
+  return rewardByDay[streak] || rewardByDay[1];
+}
+
+function buildProfileMessage(session) {
+  const registeredAt = session.completedAt || session.startedAt || new Date().toISOString();
+
+  return [
+    '<b>👤 Мій профіль</b>',
+    '',
+    `Ім'я: <b>${session.name || 'Невідомо'}</b>`,
+    `Клас: <b>${session.class || 'Невідомо'}</b>`,
+    `Предмет: <b>${session.selectedSubject || 'Не обрано'}</b>`,
+    `Дата реєстрації: <b>${formatDate(registeredAt)}</b>`,
+    `Звернень до AI: <b>${session.totalAiRequests || 0}</b>`,
+  ].join('\n');
+}
+
+function buildProgressMessage(session) {
+  return [
+    '<b>📈 Мій прогрес</b>',
+    '',
+    `XP: <b>${session.xp || 0}</b>`,
+    `Звернень до AI: <b>${session.totalAiRequests || 0}</b>`,
+    `Стрік активності: <b>${session.dailyStreak || 0} днів</b>`,
+    `Остання нагорода: <b>${formatDate(session.lastRewardClaimedDate)}</b>`,
+    '',
+    'Продовжуй щодня заходити в бот, щоб отримувати бонуси та зберігати стрік!',
+  ].join('\n');
+}
+
 function askForTopic(chatId, session, state, message) {
   userStates[chatId] = state;
 
@@ -200,7 +256,57 @@ bot.on('message', (msg) => {
 
   if (text === '📈 Мій прогрес') {
     userStates[chatId] = 'viewing_progress';
-    bot.sendMessage(chatId, config.messages.myProgress, backKeyboard);
+    bot.sendMessage(chatId, buildProgressMessage(session), {
+      parse_mode: 'HTML',
+      reply_markup: {
+        keyboard: [['⬅️ Повернутися в меню']],
+        resize_keyboard: true,
+      },
+    });
+    return;
+  }
+
+  if (text === '👤 Мій профіль') {
+    userStates[chatId] = 'viewing_profile';
+    bot.sendMessage(chatId, buildProfileMessage(session), {
+      parse_mode: 'HTML',
+      reply_markup: {
+        keyboard: [['⬅️ Повернутися в меню']],
+        resize_keyboard: true,
+      },
+    });
+    return;
+  }
+
+  if (text === '🎁 Забрати нагороду') {
+    const today = getTodayDateString();
+    if (session.lastRewardClaimedDate === today) {
+      bot.sendMessage(chatId, config.messages.rewardAlreadyClaimed, backKeyboard);
+      return;
+    }
+
+    const newStreak = session.lastRewardClaimedDate === new Date(Date.now() - 86400000).toISOString().slice(0, 10)
+      ? (session.dailyStreak || 0) + 1
+      : 1;
+
+    const reward = getDailyReward(newStreak);
+    session.xp = (session.xp || 0) + reward.amount;
+    session.lastRewardClaimedDate = today;
+    session.dailyStreak = newStreak;
+    saveSession(userId, session);
+
+    bot.sendMessage(chatId, '📦 Відкриваємо скриню...');
+    setTimeout(() => {
+      bot.sendMessage(chatId, '✨ ...', { parse_mode: 'HTML' });
+    }, 800);
+    setTimeout(() => {
+      bot.sendMessage(
+        chatId,
+        `🎁 <b>Знайдено ${reward.text}!</b>\n\nТвій прогрес оновлено. Тепер у тебе <b>${session.xp}</b> XP.`,
+        { parse_mode: 'HTML', ...backKeyboard }
+      );
+    }, 1600);
+
     return;
   }
 
@@ -222,6 +328,8 @@ bot.on('message', (msg) => {
   }
 
   if (userStates[chatId] === 'explaining_topic') {
+    session.totalAiRequests = (session.totalAiRequests || 0) + 1;
+    saveSession(userId, session);
     explainHandler.handleExplainTopic(bot, chatId, text, session);
     return;
   }

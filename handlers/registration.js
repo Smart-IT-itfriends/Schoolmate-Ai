@@ -1,6 +1,7 @@
-const { saveSession } = require('../services/userService');
+const { getSession, saveSession } = require('../services/userService');
 
 function startRegistration(bot, chatId, user, isReregister = false) {
+  const previousSession = getSession(user.id);
   const session = {
     step: 'name',
     name: null,
@@ -9,6 +10,12 @@ function startRegistration(bot, chatId, user, isReregister = false) {
     telegramId: user.id,
     username: user.username || null,
     startedAt: new Date().toISOString(),
+    completedAt: previousSession?.completedAt || null,
+    xp: previousSession?.xp || 0,
+    totalAiRequests: previousSession?.totalAiRequests || 0,
+    dailyStreak: previousSession?.dailyStreak || 0,
+    lastRewardClaimedDate: previousSession?.lastRewardClaimedDate || null,
+    rewardBuff: previousSession?.rewardBuff || null,
   };
 
   saveSession(user.id, session);
