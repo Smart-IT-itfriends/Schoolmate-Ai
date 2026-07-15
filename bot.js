@@ -116,13 +116,22 @@ function canClaimReward(session) {
   return !isSameDate(session.lastRewardClaimedDate, new Date());
 }
 
+function formatRewardResult(rewardInfo, streak) {
+  const rewardType = rewardInfo.type === 'BUFF' ? 'BUFF' : rewardInfo.type;
+  const xpAmount = rewardInfo.type === 'BUFF' ? 0 : rewardInfo.amount;
+
+  return config.messages.rewardResult
+    .replace('%s', rewardType)
+    .replace('%s', xpAmount)
+    .replace('%s', streak);
+}
+
 function claimDailyReward(chatId, userId, session) {
   if (!canClaimReward(session)) {
     bot.sendMessage(chatId, config.messages.rewardAlreadyClaimed, backKeyboard);
     return;
   }
 
-  const todayKey = getDateKey(new Date());
   const yesterdayKey = getDateKey(Date.now() - 24 * 60 * 60 * 1000);
   const lastClaimKey = session.lastRewardClaimedDate
     ? getDateKey(session.lastRewardClaimedDate)
@@ -146,9 +155,8 @@ function claimDailyReward(chatId, userId, session) {
 
   saveSession(userId, session);
 
-  const resultText = rewardInfo.type === 'BUFF'
-    ? `🎁 ${rewardInfo.message}`
-    : `🎁 ${rewardInfo.message}`;
+  const resultText = `🎁 ${rewardInfo.message}`;
+  const rewardMessage = formatRewardResult(rewardInfo, streak);
 
   bot.sendMessage(chatId, '📦 Відкриваємо скриню...').then(() => {
     setTimeout(() => {
@@ -156,7 +164,7 @@ function claimDailyReward(chatId, userId, session) {
       setTimeout(() => {
         bot.sendMessage(
           chatId,
-          `${config.messages.rewardClaimed}\n\n${resultText}\n\n${config.messages.rewardResult.replace('%s', rewardInfo.type === 'BUFF' ? '0' : rewardInfo.amount).replace('%s', rewardInfo.type === 'BUFF' ? 'BUFF' : rewardInfo.type).replace('%s', streak)}`,
+          `${config.messages.rewardClaimed}\n\n${resultText}\n\n${rewardMessage}`,
           { parse_mode: 'HTML', ...backKeyboard }
         );
       }, 800);
