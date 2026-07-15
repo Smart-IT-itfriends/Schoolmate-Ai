@@ -3,11 +3,14 @@
     "step": "completed",
     "name": "Максим",
     "class": 5,
-    "selectedSubject": "Математика",
+    "selectedSubject": "Природознавство",
     "aiRequests": 0,
     "telegramId": 8759683710,
     "username": "Max_Misiura",
     "startedAt": "2026-07-15T09:10:11.554Z",
-    "completedAt": "2026-07-15T09:10:19.974Z"
+    "completedAt": "2026-07-15T09:10:19.974Z",
+    "dailyStreak": 1,
+    "lastRewardClaimedDate": "2026-07-15T09:29:43.103Z",
+    "xp": 30
   }
 }
