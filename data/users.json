@@ -3,7 +3,7 @@
     "step": "completed",
     "name": "Максим",
     "class": 5,
-    "selectedSubject": "Природознавство",
+    "selectedSubject": "Музичне мистецтво",
     "telegramId": 8759683710,
     "username": "Max_Misiura",
     "startedAt": "2026-07-14T10:57:06.417Z",
@@ -11,6 +11,9 @@
     "xp": 30,
     "lastRewardClaimedDate": "2026-07-19T12:22:04.877Z",
     "dailyStreak": 1,
-    "totalAiRequests": 1
+    "totalAiRequests": 2,
+    "hasFreezeItem": false,
+    "lastActivityDate": "2026-07-19T12:47:54.405Z",
+    "aiRequests": 1
   }
 }

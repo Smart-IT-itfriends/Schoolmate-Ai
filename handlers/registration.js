@@ -7,11 +7,6 @@ function startRegistration(bot, chatId, user, isReregister = false) {
     name: null,
     class: null,
     selectedSubject: null,
-    aiRequests: 0,
-    xp: 0,
-    dailyStreak: 0,
-    lastRewardClaimedDate: null,
-    activeBuff: null,
     telegramId: user.id,
     username: user.username || null,
     startedAt: new Date().toISOString(),
@@ -20,6 +15,9 @@ function startRegistration(bot, chatId, user, isReregister = false) {
     totalAiRequests: previousSession?.totalAiRequests || 0,
     dailyStreak: previousSession?.dailyStreak || 0,
     lastRewardClaimedDate: previousSession?.lastRewardClaimedDate || null,
+    hasFreezeItem: previousSession?.hasFreezeItem || false,
+    activeBuff: previousSession?.activeBuff || null,
+    lastActivityDate: new Date().toISOString(),
     rewardBuff: previousSession?.rewardBuff || null,
   };
 
