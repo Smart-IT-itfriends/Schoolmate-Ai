@@ -10,6 +10,7 @@ function startRegistration(bot, chatId, user, isReregister = false) {
     xp: 0,
     dailyStreak: 0,
     lastRewardClaimedDate: null,
+    hasFreezeItem: false,
     activeBuff: null,
     lastActivityDate: new Date().toISOString(),
     telegramId: user.id,

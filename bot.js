@@ -5,6 +5,7 @@ const TelegramBot = require('node-telegram-bot-api');
 const config = require('./config');
 const { getSubjectsForClass, getAllSubjects } = require('./subjects');
 const userService = require('./services/userService');
+const punishmentService = require('./services/punishmentService');
 const keyboards = require('./keyboards');
 const registration = require('./handlers/registration');
 const explainHandler = require('./handlers/explain');
@@ -21,6 +22,56 @@ bot.userStates = userStates;
 const allSubjects = getAllSubjects();
 
 const { mainKeyboard, backKeyboard } = keyboards;
+
+const progressKeyboard = {
+  reply_markup: {
+    keyboard: [['🧊 Купити заморозку'], ['⬅️ Повернутися в меню']],
+    resize_keyboard: true,
+  },
+};
+
+function applyInactivityCheck(chatId, userId, session) {
+  const result = punishmentService.checkInactivityPunishment(session, config);
+
+  if (result.changed) {
+    saveSession(userId, result.session);
+  }
+
+  for (const message of result.messages) {
+    bot.sendMessage(chatId, message, { parse_mode: 'HTML' });
+  }
+
+  return result.session;
+}
+
+function touchUserActivity(userId, session) {
+  punishmentService.touchActivity(session);
+  saveSession(userId, session);
+}
+
+function showUserProgress(chatId, session) {
+  const xp = session.xp || 0;
+  const streak = session.dailyStreak || 0;
+  const status = punishmentService.getActivityStatus(session, config);
+  const freezeCost = config.punishment.freezeItemCost;
+  const freezeStatus = session.hasFreezeItem
+    ? config.messages.progressHasFreeze
+    : config.messages.progressNoFreeze.replace('{cost}', freezeCost);
+
+  const message = [
+    '📈 <b>Мій прогрес</b>',
+    '',
+    `🏅 Досвід (XP): <b>${xp}</b>`,
+    `🔥 Поточний стрік: <b>${streak}</b> днів`,
+    status,
+    freezeStatus,
+  ].join('\n');
+
+  bot.sendMessage(chatId, message, {
+    parse_mode: 'HTML',
+    ...progressKeyboard,
+  });
+}
 
 function getSession(userId) {
   return userService.getSession(userId);
@@ -233,6 +284,8 @@ bot.onText(/\/start/, (msg) => {
   const session = getSession(user.id);
 
   if (session && session.step === 'completed') {
+    applyInactivityCheck(chatId, user.id, session);
+    touchUserActivity(user.id, session);
     showSubjectsMenu(chatId, session);
     return;
   }
@@ -248,7 +301,7 @@ bot.on('message', (msg) => {
   const chatId = msg.chat.id;
   const userId = msg.from.id;
   const text = msg.text.trim();
-  const session = getSession(userId);
+  let session = getSession(userId);
 
   if (!session) {
     bot.sendMessage(chatId, 'Натисни /start, щоб почати.');
@@ -283,6 +336,7 @@ bot.on('message', (msg) => {
     session.class = classNum;
     session.step = 'completed';
     session.completedAt = new Date().toISOString();
+    session.hasFreezeItem = session.hasFreezeItem || false;
     saveSession(userId, session);
 
     bot.sendMessage(
@@ -292,6 +346,11 @@ bot.on('message', (msg) => {
 
     showSubjectsMenu(chatId, session);
     return;
+  }
+
+  if (session.step === 'completed') {
+    applyInactivityCheck(chatId, userId, session);
+    touchUserActivity(userId, session);
   }
 
   if (text === '📋 Головне меню') {
@@ -342,7 +401,21 @@ bot.on('message', (msg) => {
 
   if (text === '📈 Мій прогрес') {
     userStates[chatId] = 'viewing_progress';
-    bot.sendMessage(chatId, config.messages.myProgress, backKeyboard);
+    showUserProgress(chatId, session);
+    return;
+  }
+
+  if (text === '🧊 Купити заморозку') {
+    const purchaseResult = punishmentService.buyFreezeItem(session, config);
+
+    if (purchaseResult.success) {
+      saveSession(userId, session);
+    }
+
+    bot.sendMessage(chatId, purchaseResult.message, {
+      parse_mode: 'HTML',
+      ...progressKeyboard,
+    });
     return;
   }
 
@@ -399,5 +472,14 @@ bot.on('message', (msg) => {
 bot.on('polling_error', (error) => {
   console.error('Polling error:', error);
 });
+
+const checkIntervalMs = (config.punishment.checkIntervalHours || 6) * 60 * 60 * 1000;
+
+setInterval(() => {
+  const atRisk = punishmentService.countAtRiskUsers(userService, config);
+  if (atRisk > 0) {
+    console.log(`[punishment] Фонова перевірка: ${atRisk} користувач(ів) у зоні ризику`);
+  }
+}, checkIntervalMs);
 
 console.log('🤖 Schoolmate AI Bot запущений і готовий до роботи...');
