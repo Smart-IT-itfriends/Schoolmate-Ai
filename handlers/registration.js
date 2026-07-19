@@ -18,6 +18,7 @@ function startRegistration(bot, chatId, user, isReregister = false) {
     hasFreezeItem: previousSession?.hasFreezeItem || false,
     activeBuff: previousSession?.activeBuff || null,
     lastActivityDate: new Date().toISOString(),
+    timezone: previousSession?.timezone || 'Europe/Kyiv',
     rewardBuff: previousSession?.rewardBuff || null,
   };
 

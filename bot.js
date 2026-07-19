@@ -9,6 +9,8 @@ const punishmentService = require('./services/punishmentService');
 const keyboards = require('./keyboards');
 const registration = require('./handlers/registration');
 const explainHandler = require('./handlers/explain');
+const examHandler = require('./handlers/exams');
+const examScheduler = require('./services/examScheduler');
 const token = process.env.TELEGRAM_TOKEN || process.env.BOT_TOKEN;
 
 if (!token) {
@@ -16,7 +18,7 @@ if (!token) {
   process.exit(1);
 }
 
-const bot = new TelegramBot(token, { polling: true });
+const bot = new TelegramBot(token, { polling: false });
 const userStates = {};
 bot.userStates = userStates;
 const allSubjects = getAllSubjects();
@@ -334,11 +336,41 @@ bot.onText(/\/start/, (msg) => {
   if (session && session.step === 'completed') {
     applyInactivityCheck(chatId, user.id, session);
     touchUserActivity(user.id, session);
-    showSubjectsMenu(chatId, session);
+    showMainMenu(chatId, session);
     return;
   }
 
   registration.startRegistration(bot, chatId, user);
+});
+
+bot.onText(/\/add_exam/, (msg) => {
+  const chatId = msg.chat.id;
+  const session = getSession(msg.from.id);
+
+  if (!session || session.step !== 'completed') {
+    bot.sendMessage(chatId, 'Спочатку заверши реєстрацію через /start');
+    return;
+  }
+
+  examHandler.startAddExam(bot, chatId, userStates);
+});
+
+bot.onText(/\/my_exams/, (msg) => {
+  const chatId = msg.chat.id;
+  const userId = msg.from.id;
+  const session = getSession(userId);
+
+  if (!session || session.step !== 'completed') {
+    bot.sendMessage(chatId, 'Спочатку заверши реєстрацію через /start');
+    return;
+  }
+
+  examHandler.showMyExams(bot, chatId, userId, session, config);
+});
+
+bot.on('callback_query', (query) => {
+  const session = getSession(query.from.id);
+  examHandler.handleExamCallback(bot, query, session, userStates, config);
 });
 
 bot.on('message', (msg) => {
@@ -386,6 +418,7 @@ bot.on('message', (msg) => {
     session.completedAt = new Date().toISOString();
     session.hasFreezeItem = session.hasFreezeItem || false;
     session.lastActivityDate = new Date().toISOString();
+    session.timezone = session.timezone || config.exams.defaultTimezone;
     saveSession(userId, session);
 
     bot.sendMessage(
@@ -394,12 +427,17 @@ bot.on('message', (msg) => {
     );
 
     showSubjectsMenu(chatId, session);
+    showMainMenu(chatId, session);
     return;
   }
 
   if (session.step === 'completed') {
     applyInactivityCheck(chatId, userId, session);
     touchUserActivity(userId, session);
+  }
+
+  if (examHandler.handleExamMessage(bot, chatId, userId, text, session, userStates, config, saveSession)) {
+    return;
   }
 
   if (text === '📋 Головне меню') {
@@ -472,6 +510,24 @@ bot.on('message', (msg) => {
     return;
   }
 
+  if (text === '📝 Додати КР') {
+    if (session.step !== 'completed') {
+      bot.sendMessage(chatId, 'Спочатку заверши реєстрацію через /start');
+      return;
+    }
+    examHandler.startAddExam(bot, chatId, userStates);
+    return;
+  }
+
+  if (text === '📅 Мої КР') {
+    if (session.step !== 'completed') {
+      bot.sendMessage(chatId, 'Спочатку заверши реєстрацію через /start');
+      return;
+    }
+    examHandler.showMyExams(bot, chatId, userId, session, config);
+    return;
+  }
+
   if (text === '👤 Мій профіль') {
     userStates[chatId] = 'viewing_profile';
     showUserProfile(chatId, session);
@@ -496,6 +552,11 @@ bot.on('message', (msg) => {
   }
 
   if (text === '⬅️ Повернутися в меню') {
+    delete userStates[chatId];
+    if (session.examDraft) {
+      delete session.examDraft;
+      saveSession(userId, session);
+    }
     showMainMenu(chatId, session);
     return;
   }
@@ -526,7 +587,14 @@ bot.on('message', (msg) => {
 
 
 bot.on('polling_error', (error) => {
-  console.error('Polling error:', error);
+  const errorCode = error.response?.body?.error_code;
+  console.error('Polling error:', error.message || error);
+
+  if (errorCode === 409) {
+    console.error('\n❌ Помилка 409: бот уже запущений в іншому місці.');
+    console.error('   Зупини всі інші npm start / сервери з цим же TELEGRAM_TOKEN.\n');
+    process.exit(1);
+  }
 });
 
 const checkIntervalMs = (config.punishment.checkIntervalHours || 6) * 60 * 60 * 1000;
@@ -538,4 +606,22 @@ setInterval(() => {
   }
 }, checkIntervalMs);
 
-console.log('🤖 Schoolmate AI Bot запущений і готовий до роботи...');
+examScheduler.startExamScheduler(bot, config);
+
+async function startBot() {
+  await bot.deleteWebHook({ drop_pending_updates: true });
+  await bot.startPolling({ restart: true });
+
+  await bot.setMyCommands([
+    { command: 'start', description: 'Почати роботу з ботом' },
+    { command: 'add_exam', description: 'Додати контрольну роботу' },
+    { command: 'my_exams', description: 'Мої майбутні контрольні' },
+  ]);
+
+  console.log('🤖 Schoolmate AI Bot запущений і готовий до роботи...');
+}
+
+startBot().catch((error) => {
+  console.error('Не вдалося запустити бота:', error.message || error);
+  process.exit(1);
+});

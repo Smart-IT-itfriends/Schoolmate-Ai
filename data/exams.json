@@ -1,0 +1,52 @@
+{
+  "exams": [
+    {
+      "id": "f3dfe10157ed",
+      "userId": "8759683710",
+      "chatId": 8759683710,
+      "title": "КР з Математики",
+      "scheduledAt": "2026-07-19T13:10:00.000Z",
+      "timezone": "Europe/Kyiv",
+      "createdAt": "2026-07-19T13:09:10.654Z",
+      "notified2d": false,
+      "notified1d": false,
+      "notified2h": false
+    },
+    {
+      "id": "00a03e7662ed",
+      "userId": "8759683710",
+      "chatId": 8759683710,
+      "title": "КР з Математики",
+      "scheduledAt": "2026-07-19T13:11:00.000Z",
+      "timezone": "Europe/Kyiv",
+      "createdAt": "2026-07-19T13:10:20.259Z",
+      "notified2d": false,
+      "notified1d": false,
+      "notified2h": false
+    },
+    {
+      "id": "6742da637002",
+      "userId": "8759683710",
+      "chatId": 8759683710,
+      "title": "КР з Математики",
+      "scheduledAt": "2026-07-19T15:14:00.000Z",
+      "timezone": "Europe/Kyiv",
+      "createdAt": "2026-07-19T13:12:36.874Z",
+      "notified2d": true,
+      "notified1d": true,
+      "notified2h": true
+    },
+    {
+      "id": "faf734efa4fc",
+      "userId": "8759683710",
+      "chatId": 8759683710,
+      "title": "КР з Музики",
+      "scheduledAt": "2026-07-20T13:22:00.000Z",
+      "timezone": "Europe/Kyiv",
+      "createdAt": "2026-07-19T13:21:51.803Z",
+      "notified2d": true,
+      "notified1d": false,
+      "notified2h": false
+    }
+  ]
+}
