@@ -13,7 +13,7 @@
 ## Установка 💻
 
 ### Вимоги
-- Node.js (версія 12+)
+- Node.js (версія 20+)
 - npm або yarn
 - Токен Telegram бота (від @BotFather)
 
@@ -39,11 +39,19 @@
 4. **Налаштуй середовище**
    - Відкрий файл `.env`
    - Замість `YOUR_BOT_TOKEN_HERE` вставь твій токен:
-     ```
-     TELEGRAM_TOKEN=123456789:ABCdefGHIjklmNOpqrsTUvwxYZ
-     ```
+    ```
+    TELEGRAM_TOKEN=123456789:ABCdefGHIjklmNOpqrsTUvwxYZ
+    GEMINI_API_KEY=your_gemini_api_key_here
+    ```
 
-5. **Запусти бота**
+5. **Перевір AI Service**
+   ```bash
+   node scripts/test-ai.js
+   ```
+
+   Якщо `GEMINI_API_KEY` не задано, скрипт пропустить реальний API-виклик.
+
+6. **Запусти бота**
    ```bash
    npm start
    ```
