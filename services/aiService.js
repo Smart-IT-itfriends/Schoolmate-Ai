@@ -1,6 +1,8 @@
 const { GoogleGenAI } = require('@google/genai');
 
-const GEMINI_MODEL = 'gemini-2.5-flash';
+// Use the current Flash-Lite model because this API key cannot use 2.5 models.
+// It can still be overridden through GEMINI_MODEL when needed.
+const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-3.1-flash-lite';
 const CONTROLLED_ERROR_MESSAGE = 'AI Service тимчасово недоступний. Спробуйте ще раз пізніше.';
 
 class AIServiceError extends Error {
