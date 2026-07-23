@@ -59,6 +59,30 @@
       "notified2d": false,
       "notified1d": true,
       "notified2h": false
+    },
+    {
+      "id": "5bbc3f951ccd",
+      "userId": "7664893170",
+      "chatId": 7664893170,
+      "title": "КР з Математики",
+      "scheduledAt": "2026-07-25T06:00:00.000Z",
+      "timezone": "Europe/Kyiv",
+      "createdAt": "2026-07-23T12:49:00.154Z",
+      "notified2d": true,
+      "notified1d": false,
+      "notified2h": false
+    },
+    {
+      "id": "d0b6b5d24576",
+      "userId": "7664893170",
+      "chatId": 7664893170,
+      "title": "КР з Української мови",
+      "scheduledAt": "2026-07-26T06:00:00.000Z",
+      "timezone": "Europe/Kyiv",
+      "createdAt": "2026-07-23T12:49:27.976Z",
+      "notified2d": false,
+      "notified1d": false,
+      "notified2h": false
     }
   ]
 }

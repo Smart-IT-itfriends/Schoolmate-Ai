@@ -1,0 +1,26 @@
+{
+  "userQuests": {
+    "7664893170": {
+      "exam_prep": {
+        "currentProgress": 2,
+        "isCompleted": true,
+        "completedAt": "2026-07-23T12:49:27.977Z"
+      },
+      "topic_explorer": {
+        "currentProgress": 1,
+        "isCompleted": false,
+        "completedAt": null
+      },
+      "test_runner": {
+        "currentProgress": 0,
+        "isCompleted": false,
+        "completedAt": null
+      },
+      "daily_hero": {
+        "currentProgress": 0,
+        "isCompleted": false,
+        "completedAt": null
+      }
+    }
+  }
+}

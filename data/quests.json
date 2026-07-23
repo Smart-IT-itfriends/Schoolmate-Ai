@@ -1,0 +1,44 @@
+{
+  "quests": [
+    {
+      "id": "exam_prep",
+      "title": "Підготовка до контрольних",
+      "description": "Заплануй 2 контрольні роботи",
+      "targetType": "create_exam",
+      "targetCount": 2,
+      "rewardPoints": 100,
+      "repeatable": false,
+      "emoji": "📘"
+    },
+    {
+      "id": "topic_explorer",
+      "title": "Допитливий учень",
+      "description": "Отримай пояснення 5 тем",
+      "targetType": "explain_topic",
+      "targetCount": 5,
+      "rewardPoints": 75,
+      "repeatable": false,
+      "emoji": "📚"
+    },
+    {
+      "id": "test_runner",
+      "title": "Тренування тестів",
+      "description": "Пройди 3 тести",
+      "targetType": "complete_test",
+      "targetCount": 3,
+      "rewardPoints": 80,
+      "repeatable": false,
+      "emoji": "🧠"
+    },
+    {
+      "id": "daily_hero",
+      "title": "Щоденний герой",
+      "description": "Забери щоденну нагороду 3 рази",
+      "targetType": "claim_daily_reward",
+      "targetCount": 3,
+      "rewardPoints": 50,
+      "repeatable": false,
+      "emoji": "🎁"
+    }
+  ]
+}
