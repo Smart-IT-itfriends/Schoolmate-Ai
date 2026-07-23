@@ -1,6 +1,7 @@
 const examService = require('../services/examService');
 const { processExamReminders } = require('../services/examScheduler');
 const { backKeyboard } = require('../keyboards');
+const questHandler = require('./quests');
 
 function getUserTimezone(session) {
   return session?.timezone || 'Europe/Kyiv';
@@ -111,6 +112,8 @@ function handleExamMessage(bot, chatId, userId, text, session, userStates, confi
         .replace('{date}', formattedDate),
       { parse_mode: 'HTML', ...backKeyboard }
     );
+
+    questHandler.applyQuestTrigger(bot, chatId, userId, 'create_exam', session, saveSession);
 
     processExamReminders(bot, config, (telegramBot, targetChatId, message) => {
       telegramBot.sendMessage(targetChatId, message, { parse_mode: 'HTML' });

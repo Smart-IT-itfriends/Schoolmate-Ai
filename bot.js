@@ -13,6 +13,7 @@ const examHandler = require('./handlers/exams');
 const createTestHandler = require('./handlers/createTest');
 const mediaHandler = require('./handlers/media');
 const duelHandler = require('./handlers/duel');
+const questHandler = require('./handlers/quests');
 const examScheduler = require('./services/examScheduler');
 const premiumService = require('./services/premiumService');
 const token = process.env.TELEGRAM_TOKEN || process.env.BOT_TOKEN;
@@ -318,6 +319,8 @@ function handleDailyReward(chatId, userId, session) {
       parse_mode: 'HTML',
       ...backKeyboard,
     });
+
+    questHandler.applyQuestTrigger(bot, chatId, userId, 'claim_daily_reward', session, saveSession);
   }, 1600);
 }
 
@@ -426,6 +429,19 @@ bot.onText(/\/duel/, (msg) => {
   }
 
   duelHandler.showDuelMenu(bot, chatId, userId, session, config);
+});
+
+bot.onText(/\/quests/, (msg) => {
+  const chatId = msg.chat.id;
+  const userId = msg.from.id;
+  const session = getSession(userId);
+
+  if (!session || session.step !== 'completed') {
+    bot.sendMessage(chatId, 'РЎРїРѕС‡Р°С‚РєСѓ Р·Р°РІРµСЂС€Рё СЂРµС”СЃС‚СЂР°С†С–СЋ С‡РµСЂРµР· /start');
+    return;
+  }
+
+  questHandler.showQuests(bot, chatId, userId);
 });
 
 bot.on('callback_query', async (query) => {
@@ -620,6 +636,12 @@ bot.on('message', async (msg) => {
     return;
   }
 
+  if (text === '🏆 Квести') {
+    userStates[chatId] = 'viewing_quests';
+    questHandler.showQuests(bot, chatId, userId);
+    return;
+  }
+
   if (text === '🧊 Купити заморозку') {
     const purchaseResult = punishmentService.buyFreezeItem(session, config);
 
@@ -665,7 +687,7 @@ bot.on('message', async (msg) => {
 
   if (text === '⚙️ Допомога') {
     userStates[chatId] = 'viewing_help';
-    bot.sendMessage(chatId, config.messages.help, {
+    bot.sendMessage(chatId, config.messages.help + (config.messages.helpQuest || ''), {
       parse_mode: 'HTML',
       reply_markup: {
         keyboard: [['⬅️ Повернутися в меню']],
@@ -698,6 +720,7 @@ bot.on('message', async (msg) => {
     userService.recordTopicExplained(session);
     saveSession(userId, session);
     explainHandler.handleExplainTopic(bot, chatId, text, session);
+    questHandler.applyQuestTrigger(bot, chatId, userId, 'explain_topic', session, saveSession);
     return;
   }
 
@@ -751,6 +774,7 @@ async function startBot() {
     { command: 'my_exams', description: 'Мої майбутні контрольні' },
     { command: 'duel', description: 'Дуель знань — пошук, друг по ID або код' },
     { command: 'premium', description: 'Статус Premium (фото та голос)' },
+    { command: 'quests', description: 'Твої квести та прогрес' },
   ]);
 
   console.log('🤖 Schoolmate AI Bot запущений і готовий до роботи...');
