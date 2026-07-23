@@ -26,19 +26,19 @@
     "username": "Reim2444",
     "startedAt": "2026-07-23T11:57:50.564Z",
     "completedAt": "2026-07-23T11:58:22.091Z",
-    "xp": 0,
-    "totalAiRequests": 0,
+    "xp": 100,
+    "totalAiRequests": 2,
     "dailyStreak": 1,
     "lastRewardClaimedDate": "2026-07-23T11:58:52.692Z",
     "hasFreezeItem": false,
     "activeBuff": "DoubleXP",
-    "lastActivityDate": "2026-07-23T12:12:48.258Z",
+    "lastActivityDate": "2026-07-23T12:51:11.784Z",
     "timezone": "Europe/Kyiv",
     "rewardBuff": null,
     "stats": {
-      "topicsExplained": 0,
+      "topicsExplained": 1,
       "testsCompleted": 0,
-      "messagesCount": 10
+      "messagesCount": 31
     },
     "buffExpiresAt": "2026-07-24T11:58:52.692Z"
   }

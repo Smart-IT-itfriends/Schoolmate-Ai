@@ -10,6 +10,7 @@ const keyboards = require('./keyboards');
 const registration = require('./handlers/registration');
 const explainHandler = require('./handlers/explain');
 const examHandler = require('./handlers/exams');
+const questHandler = require('./handlers/quests');
 const examScheduler = require('./services/examScheduler');
 const token = process.env.TELEGRAM_TOKEN || process.env.BOT_TOKEN;
 
@@ -298,6 +299,8 @@ function handleDailyReward(chatId, userId, session) {
       parse_mode: 'HTML',
       ...backKeyboard,
     });
+
+    questHandler.applyQuestTrigger(bot, chatId, userId, 'claim_daily_reward', session, saveSession);
   }, 1600);
 }
 
@@ -383,6 +386,19 @@ bot.onText(/\/my_exams/, (msg) => {
   }
 
   examHandler.showMyExams(bot, chatId, userId, session, config);
+});
+
+bot.onText(/\/quests/, (msg) => {
+  const chatId = msg.chat.id;
+  const userId = msg.from.id;
+  const session = getSession(userId);
+
+  if (!session || session.step !== 'completed') {
+    bot.sendMessage(chatId, 'Спочатку заверши реєстрацію через /start');
+    return;
+  }
+
+  questHandler.showQuests(bot, chatId, userId);
 });
 
 bot.on('callback_query', (query) => {
@@ -508,6 +524,8 @@ bot.on('message', (msg) => {
       parse_mode: 'HTML',
       ...getActionKeyboard(session),
     });
+
+    questHandler.applyQuestTrigger(bot, chatId, userId, 'complete_test', session, saveSession);
     return;
   }
 
@@ -520,6 +538,12 @@ bot.on('message', (msg) => {
   if (text === '📊 Статистика') {
     userStates[chatId] = 'viewing_stats';
     showLearningStats(chatId, session);
+    return;
+  }
+
+  if (text === '🏆 Квести') {
+    userStates[chatId] = 'viewing_quests';
+    questHandler.showQuests(bot, chatId, userId);
     return;
   }
 
@@ -568,7 +592,7 @@ bot.on('message', (msg) => {
 
   if (text === '⚙️ Допомога') {
     userStates[chatId] = 'viewing_help';
-    bot.sendMessage(chatId, config.messages.help, {
+    bot.sendMessage(chatId, config.messages.help + (config.messages.helpQuest || ''), {
       parse_mode: 'HTML',
       reply_markup: {
         keyboard: [['⬅️ Повернутися в меню']],
@@ -593,6 +617,7 @@ bot.on('message', (msg) => {
     userService.recordTopicExplained(session);
     saveSession(userId, session);
     explainHandler.handleExplainTopic(bot, chatId, text, session);
+    questHandler.applyQuestTrigger(bot, chatId, userId, 'explain_topic', session, saveSession);
     return;
   }
 
@@ -644,6 +669,7 @@ async function startBot() {
     { command: 'start', description: 'Почати роботу з ботом' },
     { command: 'add_exam', description: 'Додати контрольну роботу' },
     { command: 'my_exams', description: 'Мої майбутні контрольні' },
+    { command: 'quests', description: 'Твої квести та прогрес' },
   ]);
 
   console.log('🤖 Schoolmate AI Bot запущений і готовий до роботи...');
