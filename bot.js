@@ -492,8 +492,6 @@ bot.on('message', (msg) => {
   }
 
   if (text === '📚 Пояснити тему') {
-    session.totalAiRequests = (session.totalAiRequests || 0) + 1;
-    saveSession(userId, session);
     askForTopic(chatId, session, 'explaining_topic', config.messages.explainTopic);
     return;
   }
