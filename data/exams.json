@@ -47,6 +47,18 @@
       "notified2d": true,
       "notified1d": false,
       "notified2h": false
+    },
+    {
+      "id": "76cc13aac149",
+      "userId": "7664893170",
+      "chatId": 7664893170,
+      "title": "КР з Англійської мови",
+      "scheduledAt": "2026-07-24T06:00:00.000Z",
+      "timezone": "Europe/Kyiv",
+      "createdAt": "2026-07-23T12:00:58.052Z",
+      "notified2d": false,
+      "notified1d": true,
+      "notified2h": false
     }
   ]
 }

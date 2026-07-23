@@ -320,6 +320,23 @@ function showUserProgress(chatId, session) {
   });
 }
 
+function showLearningStats(chatId, session) {
+  const stats = userService.ensureStats(session);
+
+  const message = [
+    '📊 <b>Статистика навчання</b>',
+    '',
+    `📚 Тем пояснено: <b>${stats.topicsExplained}</b>`,
+    `🧠 Тестів пройдено: <b>${stats.testsCompleted}</b>`,
+    `💬 Повідомлень боту: <b>${stats.messagesCount}</b>`,
+  ].join('\n');
+
+  bot.sendMessage(chatId, message, {
+    parse_mode: 'HTML',
+    ...backKeyboard,
+  });
+}
+
 function isSubjectForUser(session, text) {
   if (!session || session.step !== 'completed') {
     return false;
@@ -387,6 +404,9 @@ bot.on('message', (msg) => {
     bot.sendMessage(chatId, 'Натисни /start, щоб почати.');
     return;
   }
+
+  userService.recordMessage(session);
+  saveSession(userId, session);
 
   if (session.step === 'name') {
     if (text.length < 2) {
@@ -480,6 +500,7 @@ bot.on('message', (msg) => {
 
   if (text === '🧠 Створити тест') {
     session.totalAiRequests = (session.totalAiRequests || 0) + 1;
+    userService.recordTestCompleted(session);
     saveSession(userId, session);
     userStates[chatId] = session.selectedSubject ? 'subject_selected' : 'main_menu';
 
@@ -493,6 +514,12 @@ bot.on('message', (msg) => {
   if (text === '📈 Мій прогрес') {
     userStates[chatId] = 'viewing_progress';
     showUserProgress(chatId, session);
+    return;
+  }
+
+  if (text === '📊 Статистика') {
+    userStates[chatId] = 'viewing_stats';
+    showLearningStats(chatId, session);
     return;
   }
 
@@ -563,6 +590,7 @@ bot.on('message', (msg) => {
 
   if (userStates[chatId] === 'explaining_topic') {
     session.totalAiRequests = (session.totalAiRequests || 0) + 1;
+    userService.recordTopicExplained(session);
     saveSession(userId, session);
     explainHandler.handleExplainTopic(bot, chatId, text, session);
     return;

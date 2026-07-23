@@ -1,4 +1,4 @@
-const { getSession, saveSession } = require('../services/userService');
+const { getSession, saveSession, getDefaultStats, ensureStats } = require('../services/userService');
 
 function startRegistration(bot, chatId, user, isReregister = false) {
   const previousSession = getSession(user.id);
@@ -20,6 +20,7 @@ function startRegistration(bot, chatId, user, isReregister = false) {
     lastActivityDate: new Date().toISOString(),
     timezone: previousSession?.timezone || 'Europe/Kyiv',
     rewardBuff: previousSession?.rewardBuff || null,
+    stats: previousSession ? ensureStats(previousSession) : getDefaultStats(),
   };
 
   saveSession(user.id, session);
