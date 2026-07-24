@@ -3,19 +3,24 @@
     "step": "completed",
     "name": "Максим",
     "class": 5,
-    "selectedSubject": "Природознавство",
+    "selectedSubject": "Математика",
     "telegramId": 8759683710,
     "username": "Max_Misiura",
     "startedAt": "2026-07-14T10:57:06.417Z",
     "completedAt": "2026-07-14T10:57:22.895Z",
-    "xp": 30,
-    "lastRewardClaimedDate": "2026-07-19T12:22:04.877Z",
+    "xp": 70,
+    "lastRewardClaimedDate": "2026-07-24T16:39:41.823Z",
     "dailyStreak": 1,
-    "totalAiRequests": 2,
+    "totalAiRequests": 5,
     "hasFreezeItem": false,
-    "lastActivityDate": "2026-07-19T13:21:51.801Z",
+    "lastActivityDate": "2026-07-24T16:55:07.337Z",
     "timezone": "Europe/Kyiv",
-    "aiRequests": 1
+    "aiRequests": 1,
+    "stats": {
+      "topicsExplained": 1,
+      "testsCompleted": 2,
+      "messagesCount": 18
+    }
   },
   "7664893170": {
     "step": "completed",

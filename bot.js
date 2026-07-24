@@ -10,6 +10,7 @@ const keyboards = require('./keyboards');
 const registration = require('./handlers/registration');
 const explainHandler = require('./handlers/explain');
 const examHandler = require('./handlers/exams');
+const createTestHandler = require('./handlers/createTest');
 const examScheduler = require('./services/examScheduler');
 const token = process.env.TELEGRAM_TOKEN || process.env.BOT_TOKEN;
 
@@ -385,20 +386,37 @@ bot.onText(/\/my_exams/, (msg) => {
   examHandler.showMyExams(bot, chatId, userId, session, config);
 });
 
-bot.on('callback_query', (query) => {
+bot.on('callback_query', async (query) => {
   const session = getSession(query.from.id);
+
+  if (await createTestHandler.handleQuizCallback(bot, query, session, userStates, config, saveSession)) {
+    return;
+  }
+
   examHandler.handleExamCallback(bot, query, session, userStates, config);
 });
 
-bot.on('message', (msg) => {
+bot.on('message', async (msg) => {
+  const chatId = msg.chat.id;
+  const userId = msg.from.id;
+  const session = getSession(userId);
+
+  if (msg.document) {
+    if (!session) {
+      bot.sendMessage(chatId, 'Натисни /start, щоб почати.');
+      return;
+    }
+
+    if (await createTestHandler.handleQuizDocument(bot, msg, session, userStates, config)) {
+      return;
+    }
+  }
+
   if (!msg.text || msg.text.startsWith('/')) {
     return;
   }
 
-  const chatId = msg.chat.id;
-  const userId = msg.from.id;
   const text = msg.text.trim();
-  const session = getSession(userId);
 
   if (!session) {
     bot.sendMessage(chatId, 'Натисни /start, щоб почати.');
@@ -460,7 +478,12 @@ bot.on('message', (msg) => {
     return;
   }
 
+  if (createTestHandler.handleQuizMessage(bot, chatId, userId, text, session, userStates, config, saveSession)) {
+    return;
+  }
+
   if (text === '📋 Головне меню') {
+    createTestHandler.clearQuizSession(chatId);
     showMainMenu(chatId, session);
     return;
   }
@@ -492,20 +515,13 @@ bot.on('message', (msg) => {
   }
 
   if (text === '📚 Пояснити тему') {
+    createTestHandler.clearQuizSession(chatId);
     askForTopic(chatId, session, 'explaining_topic', config.messages.explainTopic);
     return;
   }
 
   if (text === '🧠 Створити тест') {
-    session.totalAiRequests = (session.totalAiRequests || 0) + 1;
-    userService.recordTestCompleted(session);
-    saveSession(userId, session);
-    userStates[chatId] = session.selectedSubject ? 'subject_selected' : 'main_menu';
-
-    bot.sendMessage(chatId, config.messages.createTest, {
-      parse_mode: 'HTML',
-      ...getActionKeyboard(session),
-    });
+    createTestHandler.startCreateTest(bot, chatId, session, userStates, config);
     return;
   }
 
@@ -578,6 +594,7 @@ bot.on('message', (msg) => {
 
   if (text === '⬅️ Повернутися в меню') {
     delete userStates[chatId];
+    createTestHandler.clearQuizSession(chatId);
     if (session.examDraft) {
       delete session.examDraft;
       saveSession(userId, session);
