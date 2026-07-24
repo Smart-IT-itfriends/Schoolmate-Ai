@@ -12,6 +12,7 @@ const explainHandler = require('./handlers/explain');
 const examHandler = require('./handlers/exams');
 const createTestHandler = require('./handlers/createTest');
 const mediaHandler = require('./handlers/media');
+const duelHandler = require('./handlers/duel');
 const examScheduler = require('./services/examScheduler');
 const premiumService = require('./services/premiumService');
 const token = process.env.TELEGRAM_TOKEN || process.env.BOT_TOKEN;
@@ -190,6 +191,7 @@ function showUserProfile(chatId, session) {
 Клас: <b>${session.class || 'Не вказано'}</b>
 Обраний предмет: <b>${subjectText}</b>
 Premium: <b>${premiumService.isPremium(session, session.telegramId) ? '⭐ Так' : 'Ні'}</b>
+Рейтинг дуелей: <b>${session.duelRating || 1000}</b>
 Дата реєстрації: <b>${registeredAt}</b>
 Звернень до AI: <b>${aiRequests}</b>
 XP: <b>${xp}</b>
@@ -346,6 +348,9 @@ function showLearningStats(chatId, session) {
     '',
     `📚 Тем пояснено: <b>${stats.topicsExplained}</b>`,
     `🧠 Тестів пройдено: <b>${stats.testsCompleted}</b>`,
+    `⚔️ Дуелей зіграно: <b>${stats.duelsPlayed || 0}</b>`,
+    `🏆 Дуелей виграно: <b>${stats.duelsWon || 0}</b>`,
+    `📈 Рейтинг дуелей: <b>${session.duelRating || 1000}</b>`,
     `💬 Повідомлень боту: <b>${stats.messagesCount}</b>`,
   ].join('\n');
 
@@ -410,8 +415,25 @@ bot.onText(/\/premium/, (msg) => {
   showPremiumInfo(chatId, userId, session);
 });
 
+bot.onText(/\/duel/, (msg) => {
+  const chatId = msg.chat.id;
+  const userId = msg.from.id;
+  const session = getSession(userId);
+
+  if (!session || session.step !== 'completed') {
+    bot.sendMessage(chatId, 'Спочатку заверши реєстрацію через /start');
+    return;
+  }
+
+  duelHandler.showDuelMenu(bot, chatId, userId, session, config);
+});
+
 bot.on('callback_query', async (query) => {
   const session = getSession(query.from.id);
+
+  if (await duelHandler.handleDuelCallback(bot, query, session, userStates, config)) {
+    return;
+  }
 
   if (await createTestHandler.handleQuizCallback(bot, query, session, userStates, config, saveSession)) {
     return;
@@ -529,12 +551,17 @@ bot.on('message', async (msg) => {
     return;
   }
 
+  if (duelHandler.handleDuelMessage(bot, chatId, userId, text, session, userStates, config)) {
+    return;
+  }
+
   if (createTestHandler.handleQuizMessage(bot, chatId, userId, text, session, userStates, config, saveSession)) {
     return;
   }
 
   if (text === '📋 Головне меню') {
     createTestHandler.clearQuizSession(chatId);
+    duelHandler.clearUserDuelSearch(userId, chatId, userStates);
     showMainMenu(chatId, session);
     return;
   }
@@ -573,6 +600,11 @@ bot.on('message', async (msg) => {
 
   if (text === '🧠 Створити тест') {
     createTestHandler.startCreateTest(bot, chatId, session, userStates, config);
+    return;
+  }
+
+  if (text === '⚔️ Дуель знань') {
+    duelHandler.showDuelMenu(bot, chatId, userId, session, config);
     return;
   }
 
@@ -652,6 +684,7 @@ bot.on('message', async (msg) => {
   if (text === '⬅️ Повернутися в меню') {
     delete userStates[chatId];
     createTestHandler.clearQuizSession(chatId);
+    duelHandler.clearUserDuelSearch(userId, chatId, userStates);
     if (session.examDraft) {
       delete session.examDraft;
       saveSession(userId, session);
@@ -716,6 +749,7 @@ async function startBot() {
     { command: 'start', description: 'Почати роботу з ботом' },
     { command: 'add_exam', description: 'Додати контрольну роботу' },
     { command: 'my_exams', description: 'Мої майбутні контрольні' },
+    { command: 'duel', description: 'Дуель знань — пошук, друг по ID або код' },
     { command: 'premium', description: 'Статус Premium (фото та голос)' },
   ]);
 

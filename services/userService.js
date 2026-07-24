@@ -21,6 +21,8 @@ function getDefaultStats() {
     topicsExplained: 0,
     testsCompleted: 0,
     messagesCount: 0,
+    duelsPlayed: 0,
+    duelsWon: 0,
   };
 }
 
@@ -35,6 +37,12 @@ function ensureStats(session) {
     session.stats.topicsExplained = session.stats.topicsExplained || 0;
     session.stats.testsCompleted = session.stats.testsCompleted || 0;
     session.stats.messagesCount = session.stats.messagesCount || 0;
+    session.stats.duelsPlayed = session.stats.duelsPlayed || 0;
+    session.stats.duelsWon = session.stats.duelsWon || 0;
+  }
+
+  if (!Number.isFinite(session.duelRating)) {
+    session.duelRating = 1000;
   }
 
   return session.stats;
