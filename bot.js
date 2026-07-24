@@ -11,7 +11,9 @@ const registration = require('./handlers/registration');
 const explainHandler = require('./handlers/explain');
 const examHandler = require('./handlers/exams');
 const createTestHandler = require('./handlers/createTest');
+const mediaHandler = require('./handlers/media');
 const examScheduler = require('./services/examScheduler');
+const premiumService = require('./services/premiumService');
 const token = process.env.TELEGRAM_TOKEN || process.env.BOT_TOKEN;
 
 if (!token) {
@@ -129,6 +131,7 @@ function getDailyReward(streak) {
 
 function buildProfileMessage(session) {
   const registeredAt = session.completedAt || session.startedAt || new Date().toISOString();
+  const premiumLabel = premiumService.isPremium(session, session.telegramId) ? '⭐ Так' : 'Ні';
 
   return [
     '<b>👤 Мій профіль</b>',
@@ -136,6 +139,7 @@ function buildProfileMessage(session) {
     `Ім'я: <b>${session.name || 'Невідомо'}</b>`,
     `Клас: <b>${session.class || 'Невідомо'}</b>`,
     `Предмет: <b>${session.selectedSubject || 'Не обрано'}</b>`,
+    `Premium: <b>${premiumLabel}</b>`,
     `Дата реєстрації: <b>${formatDate(registeredAt)}</b>`,
     `Звернень до AI: <b>${session.totalAiRequests || 0}</b>`,
   ].join('\n');
@@ -185,10 +189,23 @@ function showUserProfile(chatId, session) {
 Ім'я: <b>${session.name || 'Невідомо'}</b>
 Клас: <b>${session.class || 'Не вказано'}</b>
 Обраний предмет: <b>${subjectText}</b>
+Premium: <b>${premiumService.isPremium(session, session.telegramId) ? '⭐ Так' : 'Ні'}</b>
 Дата реєстрації: <b>${registeredAt}</b>
 Звернень до AI: <b>${aiRequests}</b>
 XP: <b>${xp}</b>
 Поточний стрік: <b>${streak}</b>`;
+
+  bot.sendMessage(chatId, message, {
+    parse_mode: 'HTML',
+    ...backKeyboard,
+  });
+}
+
+function showPremiumInfo(chatId, userId, session) {
+  const status = premiumService.isPremium(session, userId) ? 'активний ⭐' : 'неактивний';
+  const message = config.messages.premiumInfo
+    .replace('{status}', status)
+    .replace('{userId}', String(userId));
 
   bot.sendMessage(chatId, message, {
     parse_mode: 'HTML',
@@ -386,6 +403,13 @@ bot.onText(/\/my_exams/, (msg) => {
   examHandler.showMyExams(bot, chatId, userId, session, config);
 });
 
+bot.onText(/\/premium/, (msg) => {
+  const chatId = msg.chat.id;
+  const userId = msg.from.id;
+  const session = getSession(userId) || { telegramId: userId };
+  showPremiumInfo(chatId, userId, session);
+});
+
 bot.on('callback_query', async (query) => {
   const session = getSession(query.from.id);
 
@@ -401,6 +425,21 @@ bot.on('message', async (msg) => {
   const userId = msg.from.id;
   const session = getSession(userId);
 
+  if (msg.photo || msg.voice || msg.audio) {
+    if (!session) {
+      bot.sendMessage(chatId, 'Натисни /start, щоб почати.');
+      return;
+    }
+
+    userService.recordMessage(session);
+    saveSession(userId, session);
+    applyInactivityCheck(chatId, userId, session);
+    touchUserActivity(userId, session);
+
+    await mediaHandler.handlePremiumMedia(bot, msg, session, config, saveSession);
+    return;
+  }
+
   if (msg.document) {
     if (!session) {
       bot.sendMessage(chatId, 'Натисни /start, щоб почати.');
@@ -408,6 +447,18 @@ bot.on('message', async (msg) => {
     }
 
     if (await createTestHandler.handleQuizDocument(bot, msg, session, userStates, config)) {
+      return;
+    }
+
+    const isImageDoc =
+      msg.document.mime_type && String(msg.document.mime_type).startsWith('image/');
+
+    if (isImageDoc) {
+      userService.recordMessage(session);
+      saveSession(userId, session);
+      applyInactivityCheck(chatId, userId, session);
+      touchUserActivity(userId, session);
+      await mediaHandler.handlePremiumMedia(bot, msg, session, config, saveSession);
       return;
     }
   }
@@ -592,6 +643,12 @@ bot.on('message', async (msg) => {
     return;
   }
 
+  if (text === '⭐ Premium') {
+    userStates[chatId] = 'viewing_premium';
+    showPremiumInfo(chatId, userId, session);
+    return;
+  }
+
   if (text === '⬅️ Повернутися в меню') {
     delete userStates[chatId];
     createTestHandler.clearQuizSession(chatId);
@@ -659,6 +716,7 @@ async function startBot() {
     { command: 'start', description: 'Почати роботу з ботом' },
     { command: 'add_exam', description: 'Додати контрольну роботу' },
     { command: 'my_exams', description: 'Мої майбутні контрольні' },
+    { command: 'premium', description: 'Статус Premium (фото та голос)' },
   ]);
 
   console.log('🤖 Schoolmate AI Bot запущений і готовий до роботи...');

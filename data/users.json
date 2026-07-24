@@ -3,7 +3,7 @@
     "step": "completed",
     "name": "Максим",
     "class": 5,
-    "selectedSubject": "Математика",
+    "selectedSubject": "Українська мова",
     "telegramId": 8759683710,
     "username": "Max_Misiura",
     "startedAt": "2026-07-14T10:57:06.417Z",
@@ -11,15 +11,15 @@
     "xp": 70,
     "lastRewardClaimedDate": "2026-07-24T16:39:41.823Z",
     "dailyStreak": 1,
-    "totalAiRequests": 5,
+    "totalAiRequests": 7,
     "hasFreezeItem": false,
-    "lastActivityDate": "2026-07-24T16:55:07.337Z",
+    "lastActivityDate": "2026-07-24T17:12:43.714Z",
     "timezone": "Europe/Kyiv",
     "aiRequests": 1,
     "stats": {
-      "topicsExplained": 1,
+      "topicsExplained": 2,
       "testsCompleted": 2,
-      "messagesCount": 18
+      "messagesCount": 32
     }
   },
   "7664893170": {
