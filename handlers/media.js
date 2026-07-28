@@ -13,6 +13,7 @@ const FOREIGN_SUBJECTS = [
 
 const MAX_PHOTO_BYTES = 8 * 1024 * 1024;
 const MAX_VOICE_BYTES = 4 * 1024 * 1024;
+const MAX_VIDEO_BYTES = 16 * 1024 * 1024;
 const TELEGRAM_TEXT_LIMIT = 3900;
 
 function escapeHtml(text) {
@@ -102,6 +103,33 @@ function buildVoicePrompt(session) {
     .join('\n');
 }
 
+function buildVideoPrompt(session, caption) {
+  const subject = session?.selectedSubject
+    ? `Предмет: ${session.selectedSubject}.`
+    : '';
+  const grade = session?.class ? `Клас учня: ${session.class}.` : '';
+  const extra = caption && caption.trim()
+    ? `Додатковий запит користувача: ${caption.trim()}`
+    : 'Додаткового тексту немає — поясни відео самостійно.';
+
+  return [
+    'Ти — шкільний AI-репетитор SchoolMate AI.',
+    'Користувач надіслав відео. Проаналізуй навчальний або пояснювальний контент у відео.',
+    subject,
+    grade,
+    extra,
+    '',
+    'Надай відповідь українською мовою (або мовою відео, якщо це іноземна мова):',
+    '1) Коротко: що показано у відео.',
+    '2) Основна ідея або навчальний зміст.',
+    '3) Покрокове пояснення або коментар до кожного важливого моменту.',
+    '4) Коротке резюме / висновок.',
+    'Якщо відео містить задачу або розв’язання, поясни його кроки чітко для школяра.',
+  ]
+    .filter(Boolean)
+    .join('\n');
+}
+
 async function sendLongHtmlReply(bot, chatId, title, body, session) {
   const header = `${title}\n\n`;
   const chunks = splitMessage(escapeHtml(body));
@@ -148,7 +176,13 @@ async function analyzeMediaBuffer({
   resultTitle,
   config,
 }) {
-  if (buffer.length > (mimeType.startsWith('audio/') ? MAX_VOICE_BYTES : MAX_PHOTO_BYTES)) {
+  const maxBytes = mimeType.startsWith('audio/')
+    ? MAX_VOICE_BYTES
+    : mimeType.startsWith('video/')
+    ? MAX_VIDEO_BYTES
+    : MAX_PHOTO_BYTES;
+
+  if (buffer.length > maxBytes) {
     await bot.sendMessage(chatId, config.messages.premiumMediaTooLarge, {
       parse_mode: 'HTML',
       ...getActionKeyboard(session),
@@ -195,12 +229,17 @@ async function handlePremiumMedia(bot, msg, session, config, saveSession) {
   const hasPhoto = Array.isArray(msg.photo) && msg.photo.length > 0;
   const hasVoice = Boolean(msg.voice);
   const hasAudio = Boolean(msg.audio);
+  const hasVideo = Boolean(msg.video);
   const isImageDocument =
     msg.document &&
     typeof msg.document.mime_type === 'string' &&
     msg.document.mime_type.startsWith('image/');
+  const isVideoDocument =
+    msg.document &&
+    typeof msg.document.mime_type === 'string' &&
+    msg.document.mime_type.startsWith('video/');
 
-  if (!hasPhoto && !hasVoice && !hasAudio && !isImageDocument) {
+  if (!hasPhoto && !hasVoice && !hasAudio && !hasVideo && !isImageDocument && !isVideoDocument) {
     return false;
   }
 
@@ -254,6 +293,48 @@ async function handlePremiumMedia(bot, msg, session, config, saveSession) {
       prompt: buildVisionPrompt(session, msg.caption),
       waitingMessage: config.messages.premiumPhotoAnalyzing,
       resultTitle: '🖼️ <b>Розбір зображення (Premium)</b>',
+      config,
+    });
+    return true;
+  }
+
+  if (hasVideo) {
+    const { buffer, filePath } = await downloadTelegramFile(bot, msg.video.file_id);
+    const mimeType =
+      msg.video.mime_type || guessMimeFromPath(filePath, 'video/mp4');
+
+    await analyzeMediaBuffer({
+      bot,
+      chatId,
+      userId,
+      session,
+      saveSession,
+      buffer,
+      mimeType,
+      prompt: buildVideoPrompt(session, msg.caption),
+      waitingMessage: config.messages.premiumVideoAnalyzing,
+      resultTitle: '🎬 <b>Розбір відео (Premium)</b>',
+      config,
+    });
+    return true;
+  }
+
+  if (isVideoDocument) {
+    const { buffer, filePath } = await downloadTelegramFile(bot, msg.document.file_id);
+    const mimeType =
+      msg.document.mime_type || guessMimeFromPath(filePath, 'video/mp4');
+
+    await analyzeMediaBuffer({
+      bot,
+      chatId,
+      userId,
+      session,
+      saveSession,
+      buffer,
+      mimeType,
+      prompt: buildVideoPrompt(session, msg.caption),
+      waitingMessage: config.messages.premiumVideoAnalyzing,
+      resultTitle: '🎬 <b>Розбір відео (Premium)</b>',
       config,
     });
     return true;

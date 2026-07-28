@@ -48,6 +48,10 @@ function guessMimeFromPath(filePath, fallback) {
   if (lower.endsWith('.mp3')) return 'audio/mpeg';
   if (lower.endsWith('.wav')) return 'audio/wav';
   if (lower.endsWith('.m4a')) return 'audio/mp4';
+  if (lower.endsWith('.mp4')) return 'video/mp4';
+  if (lower.endsWith('.mov')) return 'video/quicktime';
+  if (lower.endsWith('.webm')) return 'video/webm';
+  if (lower.endsWith('.mkv')) return 'video/x-matroska';
 
   return fallback;
 }

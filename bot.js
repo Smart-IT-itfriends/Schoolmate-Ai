@@ -6,6 +6,7 @@ const config = require('./config');
 const { getSubjectsForClass, getAllSubjects } = require('./subjects');
 const userService = require('./services/userService');
 const punishmentService = require('./services/punishmentService');
+const adminService = require('./services/adminService');
 const keyboards = require('./keyboards');
 const registration = require('./handlers/registration');
 const explainHandler = require('./handlers/explain');
@@ -430,17 +431,262 @@ bot.onText(/\/premium/, (msg) => {
   showPremiumInfo(chatId, userId, session);
 });
 
-bot.onText(/\/duel/, (msg) => {
+bot.onText(/\/admin(?:@\w+)?/, (msg) => {
   const chatId = msg.chat.id;
-  const userId = msg.from.id;
-  const session = getSession(userId);
+  const user = msg.from;
 
-  if (!session || session.step !== 'completed') {
-    bot.sendMessage(chatId, 'Спочатку заверши реєстрацію через /start');
+  if (!adminService.isAdminUser(user)) {
+    bot.sendMessage(chatId, config.messages.adminAccessDenied);
     return;
   }
 
-  duelHandler.showDuelMenu(bot, chatId, userId, session, config);
+  bot.sendMessage(chatId, config.messages.adminHelp, {
+    parse_mode: 'HTML',
+    reply_markup: {
+      inline_keyboard: [
+        [
+          { text: '🧑‍💼 Картка користувача', callback_data: 'admin:menu:user' },
+          { text: '📊 Статистика', callback_data: 'admin:menu:stats' },
+        ],
+        [
+          { text: '➕ Додати XP', callback_data: 'admin:menu:give_xp' },
+          { text: '➖ Списати XP', callback_data: 'admin:menu:take_xp' },
+        ],
+        [
+          { text: '⭐ Дати Premium', callback_data: 'admin:menu:set_premium' },
+          { text: '⛔ Забанити / Розбанити', callback_data: 'admin:menu:ban' },
+        ],
+      ],
+    },
+  });
+});
+
+bot.onText(/\/user(?:@\w+)?\s+(.+)/, (msg, match) => {
+  const chatId = msg.chat.id;
+  const user = msg.from;
+  const identifier = match && match[1] ? match[1].trim() : null;
+
+  if (!adminService.isAdminUser(user)) {
+    bot.sendMessage(chatId, config.messages.adminAccessDenied);
+    return;
+  }
+
+  if (!identifier) {
+    bot.sendMessage(chatId, config.messages.adminInvalidArgs);
+    return;
+  }
+
+  const target = adminService.getUserByIdentifier(identifier);
+  if (!target || !target.session) {
+    bot.sendMessage(chatId, config.messages.adminUserNotFound);
+    return;
+  }
+
+  const card = adminService.getUserCard(target.session, target.id);
+  bot.sendMessage(chatId, card, {
+    parse_mode: 'HTML',
+    reply_markup: {
+      inline_keyboard: [
+        [
+          { text: '+100 XP', callback_data: `admin:action:give_xp:${target.id}:100` },
+          { text: '-100 XP', callback_data: `admin:action:take_xp:${target.id}:100` },
+        ],
+        [
+          { text: 'Premium 7d', callback_data: `admin:action:set_premium:${target.id}:7` },
+          { text: target.session.banned ? 'Розбанити' : 'Забанити', callback_data: `admin:action:${target.session.banned ? 'unban' : 'ban'}:${target.id}` },
+        ],
+      ],
+    },
+  });
+});
+
+bot.onText(/\/give_xp(?:@\w+)?\s+([^\s]+)(?:\s+(\d+))?/, (msg, match) => {
+  const chatId = msg.chat.id;
+  const user = msg.from;
+
+  if (!adminService.isAdminUser(user)) {
+    bot.sendMessage(chatId, config.messages.adminAccessDenied);
+    return;
+  }
+
+  const targetId = match[1];
+  const amount = Number(match[2] || 100);
+
+  if (!targetId || !Number.isFinite(amount) || amount <= 0) {
+    bot.sendMessage(chatId, config.messages.adminInvalidArgs);
+    return;
+  }
+
+  const target = adminService.getUserByIdentifier(targetId);
+  if (!target || !target.session) {
+    bot.sendMessage(chatId, config.messages.adminUserNotFound);
+    return;
+  }
+
+  const updated = adminService.adjustXp(target.id, amount);
+  if (!updated) {
+    bot.sendMessage(chatId, config.messages.adminActionFailed);
+    return;
+  }
+
+  adminService.logAction(user, 'give_xp', target.id, `amount=${amount}`);
+  bot.sendMessage(chatId, `✅ Додано ${amount} XP користувачу ${target.id}. Новий баланс: ${updated.xp}.`, { parse_mode: 'HTML' });
+});
+
+bot.onText(/\/take_xp(?:@\w+)?\s+([^\s]+)(?:\s+(\d+))?/, (msg, match) => {
+  const chatId = msg.chat.id;
+  const user = msg.from;
+
+  if (!adminService.isAdminUser(user)) {
+    bot.sendMessage(chatId, config.messages.adminAccessDenied);
+    return;
+  }
+
+  const targetId = match[1];
+  const amount = Number(match[2] || 100);
+
+  if (!targetId || !Number.isFinite(amount) || amount <= 0) {
+    bot.sendMessage(chatId, config.messages.adminInvalidArgs);
+    return;
+  }
+
+  const target = adminService.getUserByIdentifier(targetId);
+  if (!target || !target.session) {
+    bot.sendMessage(chatId, config.messages.adminUserNotFound);
+    return;
+  }
+
+  const updated = adminService.adjustXp(target.id, -amount);
+  if (!updated) {
+    bot.sendMessage(chatId, config.messages.adminActionFailed);
+    return;
+  }
+
+  adminService.logAction(user, 'take_xp', target.id, `amount=${amount}`);
+  bot.sendMessage(chatId, `✅ Списано ${amount} XP у користувача ${target.id}. Новий баланс: ${updated.xp}.`, { parse_mode: 'HTML' });
+});
+
+bot.onText(/\/set_premium(?:@\w+)?\s+([^\s]+)\s+(\d+)/, (msg, match) => {
+  const chatId = msg.chat.id;
+  const user = msg.from;
+
+  if (!adminService.isAdminUser(user)) {
+    bot.sendMessage(chatId, config.messages.adminAccessDenied);
+    return;
+  }
+
+  const targetId = match[1];
+  const days = Number(match[2]);
+
+  if (!targetId || !Number.isFinite(days) || days <= 0) {
+    bot.sendMessage(chatId, config.messages.adminInvalidArgs);
+    return;
+  }
+
+  const target = adminService.getUserByIdentifier(targetId);
+  if (!target || !target.session) {
+    bot.sendMessage(chatId, config.messages.adminUserNotFound);
+    return;
+  }
+
+  const updated = adminService.setPremiumDays(target.id, days);
+  if (!updated) {
+    bot.sendMessage(chatId, config.messages.adminActionFailed);
+    return;
+  }
+
+  adminService.logAction(user, 'set_premium', target.id, `days=${days}`);
+  bot.sendMessage(chatId, `✅ Premium активовано для користувача ${target.id} на ${days} днів.`, { parse_mode: 'HTML' });
+});
+
+bot.onText(/\/ban(?:@\w+)?\s+([^\s]+)(?:\s+(.+))?/, (msg, match) => {
+  const chatId = msg.chat.id;
+  const user = msg.from;
+
+  if (!adminService.isAdminUser(user)) {
+    bot.sendMessage(chatId, config.messages.adminAccessDenied);
+    return;
+  }
+
+  const targetId = match[1];
+  const reason = match[2] ? match[2].trim() : 'Не вказано';
+
+  if (!targetId) {
+    bot.sendMessage(chatId, config.messages.adminInvalidArgs);
+    return;
+  }
+
+  const target = adminService.getUserByIdentifier(targetId);
+  if (!target || !target.session) {
+    bot.sendMessage(chatId, config.messages.adminUserNotFound);
+    return;
+  }
+
+  const updated = adminService.banUser(target.id, reason);
+  if (!updated) {
+    bot.sendMessage(chatId, config.messages.adminActionFailed);
+    return;
+  }
+
+  adminService.logAction(user, 'ban', target.id, `reason=${reason}`);
+  bot.sendMessage(chatId, `⛔ Користувач ${target.id} заблокований. Причина: ${reason}`, { parse_mode: 'HTML' });
+});
+
+bot.onText(/\/unban(?:@\w+)?\s+([^\s]+)/, (msg, match) => {
+  const chatId = msg.chat.id;
+  const user = msg.from;
+
+  if (!adminService.isAdminUser(user)) {
+    bot.sendMessage(chatId, config.messages.adminAccessDenied);
+    return;
+  }
+
+  const targetId = match[1];
+
+  if (!targetId) {
+    bot.sendMessage(chatId, config.messages.adminInvalidArgs);
+    return;
+  }
+
+  const target = adminService.getUserByIdentifier(targetId);
+  if (!target || !target.session) {
+    bot.sendMessage(chatId, config.messages.adminUserNotFound);
+    return;
+  }
+
+  const updated = adminService.unbanUser(target.id);
+  if (!updated) {
+    bot.sendMessage(chatId, config.messages.adminActionFailed);
+    return;
+  }
+
+  adminService.logAction(user, 'unban', target.id);
+  bot.sendMessage(chatId, `✅ Користувач ${target.id} розблокований.`, { parse_mode: 'HTML' });
+});
+
+bot.onText(/\/stats(?:@\w+)?/, (msg) => {
+  const chatId = msg.chat.id;
+  const user = msg.from;
+
+  if (!adminService.isAdminUser(user)) {
+    bot.sendMessage(chatId, config.messages.adminAccessDenied);
+    return;
+  }
+
+  const stats = adminService.getSystemStats();
+  const uptime = process.uptime();
+  const uptimeText = `${Math.floor(uptime / 3600)}h ${Math.floor((uptime % 3600) / 60)}m ${Math.floor(uptime % 60)}s`;
+
+  bot.sendMessage(chatId, `📊 <b>Системна статистика</b>\n\n` +
+    `Користувачів: <b>${stats.userCount}</b>\n` +
+    `Онлайн за останні 15 хв: <b>${stats.onlineCount}</b>\n` +
+    `Преміум активних: <b>${stats.premiumCount}</b>\n` +
+    `Заблоковано: <b>${stats.bannedCount}</b>\n` +
+    `Загальний XP: <b>${stats.totalXp}</b>\n` +
+    `Середній XP: <b>${stats.averageXp}</b>\n` +
+    `Uptime: <b>${uptimeText}</b>`, {
+    parse_mode: 'HTML',
+  });
 });
 
 bot.onText(/\/quests/, (msg) => {
@@ -458,6 +704,108 @@ bot.onText(/\/quests/, (msg) => {
 
 bot.on('callback_query', async (query) => {
   const session = getSession(query.from.id);
+  const chatId = query.message?.chat?.id || query.from.id;
+  const user = query.from;
+  const data = String(query.data || '');
+
+  if (data.startsWith('admin:')) {
+    if (!adminService.isAdminUser(user)) {
+      await bot.answerCallbackQuery(query.id, { text: config.messages.adminAccessDenied, show_alert: true });
+      return;
+    }
+
+    await bot.answerCallbackQuery(query.id);
+    const parts = data.split(':');
+    const mode = parts[1];
+
+    if (mode === 'menu') {
+      const menuKey = parts[2];
+      if (menuKey === 'user') {
+        await bot.sendMessage(chatId, 'Введіть /user <user_id|username> для перегляду картки користувача.', { parse_mode: 'HTML' });
+        return;
+      }
+      if (menuKey === 'stats') {
+        const stats = adminService.getSystemStats();
+        const uptime = process.uptime();
+        const uptimeText = `${Math.floor(uptime / 3600)}h ${Math.floor((uptime % 3600) / 60)}m ${Math.floor(uptime % 60)}s`;
+        await bot.sendMessage(chatId, `📊 <b>Системна статистика</b>\n\n` +
+          `Користувачів: <b>${stats.userCount}</b>\n` +
+          `Онлайн за останні 15 хв: <b>${stats.onlineCount}</b>\n` +
+          `Преміум активних: <b>${stats.premiumCount}</b>\n` +
+          `Заблоковано: <b>${stats.bannedCount}</b>\n` +
+          `Загальний XP: <b>${stats.totalXp}</b>\n` +
+          `Середній XP: <b>${stats.averageXp}</b>\n` +
+          `Uptime: <b>${uptimeText}</b>`, { parse_mode: 'HTML' });
+        return;
+      }
+      if (menuKey === 'give_xp') {
+        await bot.sendMessage(chatId, 'Введіть команду: /give_xp <user_id> [amount]', { parse_mode: 'HTML' });
+        return;
+      }
+      if (menuKey === 'take_xp') {
+        await bot.sendMessage(chatId, 'Введіть команду: /take_xp <user_id> [amount]', { parse_mode: 'HTML' });
+        return;
+      }
+      if (menuKey === 'set_premium') {
+        await bot.sendMessage(chatId, 'Введіть команду: /set_premium <user_id> <days>', { parse_mode: 'HTML' });
+        return;
+      }
+      if (menuKey === 'ban') {
+        await bot.sendMessage(chatId, 'Введіть команду: /ban <user_id> [reason] або /unban <user_id>', { parse_mode: 'HTML' });
+        return;
+      }
+    }
+
+    if (mode === 'action') {
+      const action = parts[2];
+      const targetId = parts[3];
+      const amount = Number(parts[4] || 0);
+      const target = adminService.getUserByIdentifier(targetId);
+
+      if (!target || !target.session) {
+        await bot.sendMessage(chatId, config.messages.adminUserNotFound);
+        return;
+      }
+
+      let updated;
+      if (action === 'give_xp') {
+        updated = adminService.adjustXp(target.id, amount || 100);
+        if (updated) {
+          adminService.logAction(user, 'give_xp', target.id, `amount=${amount || 100}`);
+          await bot.sendMessage(chatId, `✅ Додано ${amount || 100} XP користувачу ${target.id}. Новий баланс: ${updated.xp}.`, { parse_mode: 'HTML' });
+        }
+      } else if (action === 'take_xp') {
+        updated = adminService.adjustXp(target.id, -(amount || 100));
+        if (updated) {
+          adminService.logAction(user, 'take_xp', target.id, `amount=${amount || 100}`);
+          await bot.sendMessage(chatId, `✅ Списано ${amount || 100} XP у користувача ${target.id}. Новий баланс: ${updated.xp}.`, { parse_mode: 'HTML' });
+        }
+      } else if (action === 'set_premium') {
+        updated = adminService.setPremiumDays(target.id, amount || 7);
+        if (updated) {
+          adminService.logAction(user, 'set_premium', target.id, `days=${amount || 7}`);
+          await bot.sendMessage(chatId, `✅ Premium активовано для користувача ${target.id} на ${amount || 7} днів.`, { parse_mode: 'HTML' });
+        }
+      } else if (action === 'ban') {
+        updated = adminService.banUser(target.id, 'Бан із адмін-кнопки');
+        if (updated) {
+          adminService.logAction(user, 'ban', target.id, 'reason=Адмінська дія');
+          await bot.sendMessage(chatId, `⛔ Користувач ${target.id} заблокований.`, { parse_mode: 'HTML' });
+        }
+      } else if (action === 'unban') {
+        updated = adminService.unbanUser(target.id);
+        if (updated) {
+          adminService.logAction(user, 'unban', target.id);
+          await bot.sendMessage(chatId, `✅ Користувач ${target.id} розблокований.`, { parse_mode: 'HTML' });
+        }
+      }
+
+      if (!updated) {
+        await bot.sendMessage(chatId, config.messages.adminActionFailed);
+      }
+      return;
+    }
+  }
 
   if (await duelHandler.handleDuelCallback(bot, query, session, userStates, config)) {
     return;
@@ -854,6 +1202,14 @@ async function startBot() {
     { command: 'duel', description: 'Дуель знань — пошук, друг по ID або код' },
     { command: 'premium', description: 'Статус Premium (фото та голос)' },
     { command: 'quests', description: 'Твої квести та прогрес' },
+    { command: 'admin', description: 'Адмін-панель для модераторів' },
+    { command: 'user', description: 'Переглянути картку користувача' },
+    { command: 'give_xp', description: 'Нарахувати XP користувачу' },
+    { command: 'take_xp', description: 'Списати XP у користувача' },
+    { command: 'set_premium', description: 'Надати або продовжити Premium' },
+    { command: 'ban', description: 'Заблокувати користувача' },
+    { command: 'unban', description: 'Розблокувати користувача' },
+    { command: 'stats', description: 'Системна статистика для адмінів' },
   ]);
 
   console.log('🤖 Schoolmate AI Bot запущений і готовий до роботи...');
