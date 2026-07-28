@@ -3,6 +3,7 @@ const http = require('http');
 const { getActionKeyboard, backKeyboard } = require('../keyboards');
 const { askAI, AIServiceError } = require('../services/aiService');
 const userService = require('../services/userService');
+const questHandler = require('./quests');
 
 const OPTION_LABELS = ['А', 'Б', 'В', 'Г', 'Д', 'Е'];
 const ALLOWED_COUNTS = [3, 5, 7, 10];
@@ -266,6 +267,11 @@ async function finishQuiz(bot, chatId, userId, session, userStates, config, save
   }
 
   saveSession(userId, session);
+
+  if (!stoppedEarly) {
+    questHandler.applyQuestTrigger(bot, chatId, userId, 'complete_test', session, saveSession);
+  }
+
   clearQuizSession(chatId);
   userStates[chatId] = session.selectedSubject ? 'subject_selected' : 'main_menu';
 
