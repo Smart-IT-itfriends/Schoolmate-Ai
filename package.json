@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node bot.js",
     "dev": "nodemon bot.js",
-    "test": "node --test tests/duelScoring.test.js"
+    "test": "node --test tests/duelScoring.test.js tests/referralService.test.js"
   },
   "keywords": [
     "telegram",
