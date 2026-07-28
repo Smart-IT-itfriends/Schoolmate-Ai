@@ -10,8 +10,12 @@ const keyboards = require('./keyboards');
 const registration = require('./handlers/registration');
 const explainHandler = require('./handlers/explain');
 const examHandler = require('./handlers/exams');
+const createTestHandler = require('./handlers/createTest');
+const mediaHandler = require('./handlers/media');
+const duelHandler = require('./handlers/duel');
 const questHandler = require('./handlers/quests');
 const examScheduler = require('./services/examScheduler');
+const premiumService = require('./services/premiumService');
 const token = process.env.TELEGRAM_TOKEN || process.env.BOT_TOKEN;
 
 if (!token) {
@@ -129,6 +133,7 @@ function getDailyReward(streak) {
 
 function buildProfileMessage(session) {
   const registeredAt = session.completedAt || session.startedAt || new Date().toISOString();
+  const premiumLabel = premiumService.isPremium(session, session.telegramId) ? '⭐ Так' : 'Ні';
 
   return [
     '<b>👤 Мій профіль</b>',
@@ -136,6 +141,7 @@ function buildProfileMessage(session) {
     `Ім'я: <b>${session.name || 'Невідомо'}</b>`,
     `Клас: <b>${session.class || 'Невідомо'}</b>`,
     `Предмет: <b>${session.selectedSubject || 'Не обрано'}</b>`,
+    `Premium: <b>${premiumLabel}</b>`,
     `Дата реєстрації: <b>${formatDate(registeredAt)}</b>`,
     `Звернень до AI: <b>${session.totalAiRequests || 0}</b>`,
   ].join('\n');
@@ -185,10 +191,24 @@ function showUserProfile(chatId, session) {
 Ім'я: <b>${session.name || 'Невідомо'}</b>
 Клас: <b>${session.class || 'Не вказано'}</b>
 Обраний предмет: <b>${subjectText}</b>
+Premium: <b>${premiumService.isPremium(session, session.telegramId) ? '⭐ Так' : 'Ні'}</b>
+Рейтинг дуелей: <b>${session.duelRating || 1000}</b>
 Дата реєстрації: <b>${registeredAt}</b>
 Звернень до AI: <b>${aiRequests}</b>
 XP: <b>${xp}</b>
 Поточний стрік: <b>${streak}</b>`;
+
+  bot.sendMessage(chatId, message, {
+    parse_mode: 'HTML',
+    ...backKeyboard,
+  });
+}
+
+function showPremiumInfo(chatId, userId, session) {
+  const status = premiumService.isPremium(session, userId) ? 'активний ⭐' : 'неактивний';
+  const message = config.messages.premiumInfo
+    .replace('{status}', status)
+    .replace('{userId}', String(userId));
 
   bot.sendMessage(chatId, message, {
     parse_mode: 'HTML',
@@ -331,6 +351,9 @@ function showLearningStats(chatId, session) {
     '',
     `📚 Тем пояснено: <b>${stats.topicsExplained}</b>`,
     `🧠 Тестів пройдено: <b>${stats.testsCompleted}</b>`,
+    `⚔️ Дуелей зіграно: <b>${stats.duelsPlayed || 0}</b>`,
+    `🏆 Дуелей виграно: <b>${stats.duelsWon || 0}</b>`,
+    `📈 Рейтинг дуелей: <b>${session.duelRating || 1000}</b>`,
     `💬 Повідомлень боту: <b>${stats.messagesCount}</b>`,
   ].join('\n');
 
@@ -388,6 +411,26 @@ bot.onText(/\/my_exams/, (msg) => {
   examHandler.showMyExams(bot, chatId, userId, session, config);
 });
 
+bot.onText(/\/premium/, (msg) => {
+  const chatId = msg.chat.id;
+  const userId = msg.from.id;
+  const session = getSession(userId) || { telegramId: userId };
+  showPremiumInfo(chatId, userId, session);
+});
+
+bot.onText(/\/duel/, (msg) => {
+  const chatId = msg.chat.id;
+  const userId = msg.from.id;
+  const session = getSession(userId);
+
+  if (!session || session.step !== 'completed') {
+    bot.sendMessage(chatId, 'Спочатку заверши реєстрацію через /start');
+    return;
+  }
+
+  duelHandler.showDuelMenu(bot, chatId, userId, session, config);
+});
+
 bot.onText(/\/quests/, (msg) => {
   const chatId = msg.chat.id;
   const userId = msg.from.id;
@@ -401,20 +444,68 @@ bot.onText(/\/quests/, (msg) => {
   questHandler.showQuests(bot, chatId, userId);
 });
 
-bot.on('callback_query', (query) => {
+bot.on('callback_query', async (query) => {
   const session = getSession(query.from.id);
+
+  if (await duelHandler.handleDuelCallback(bot, query, session, userStates, config)) {
+    return;
+  }
+
+  if (await createTestHandler.handleQuizCallback(bot, query, session, userStates, config, saveSession)) {
+    return;
+  }
+
   examHandler.handleExamCallback(bot, query, session, userStates, config);
 });
 
-bot.on('message', (msg) => {
+bot.on('message', async (msg) => {
+  const chatId = msg.chat.id;
+  const userId = msg.from.id;
+  const session = getSession(userId);
+
+  if (msg.photo || msg.voice || msg.audio) {
+    if (!session) {
+      bot.sendMessage(chatId, 'Натисни /start, щоб почати.');
+      return;
+    }
+
+    userService.recordMessage(session);
+    saveSession(userId, session);
+    applyInactivityCheck(chatId, userId, session);
+    touchUserActivity(userId, session);
+
+    await mediaHandler.handlePremiumMedia(bot, msg, session, config, saveSession);
+    return;
+  }
+
+  if (msg.document) {
+    if (!session) {
+      bot.sendMessage(chatId, 'Натисни /start, щоб почати.');
+      return;
+    }
+
+    if (await createTestHandler.handleQuizDocument(bot, msg, session, userStates, config)) {
+      return;
+    }
+
+    const isImageDoc =
+      msg.document.mime_type && String(msg.document.mime_type).startsWith('image/');
+
+    if (isImageDoc) {
+      userService.recordMessage(session);
+      saveSession(userId, session);
+      applyInactivityCheck(chatId, userId, session);
+      touchUserActivity(userId, session);
+      await mediaHandler.handlePremiumMedia(bot, msg, session, config, saveSession);
+      return;
+    }
+  }
+
   if (!msg.text || msg.text.startsWith('/')) {
     return;
   }
 
-  const chatId = msg.chat.id;
-  const userId = msg.from.id;
   const text = msg.text.trim();
-  const session = getSession(userId);
 
   if (!session) {
     bot.sendMessage(chatId, 'Натисни /start, щоб почати.');
@@ -476,7 +567,17 @@ bot.on('message', (msg) => {
     return;
   }
 
+  if (duelHandler.handleDuelMessage(bot, chatId, userId, text, session, userStates, config)) {
+    return;
+  }
+
+  if (createTestHandler.handleQuizMessage(bot, chatId, userId, text, session, userStates, config, saveSession)) {
+    return;
+  }
+
   if (text === '📋 Головне меню') {
+    createTestHandler.clearQuizSession(chatId);
+    duelHandler.clearUserDuelSearch(userId, chatId, userStates);
     showMainMenu(chatId, session);
     return;
   }
@@ -508,24 +609,18 @@ bot.on('message', (msg) => {
   }
 
   if (text === '📚 Пояснити тему') {
-    session.totalAiRequests = (session.totalAiRequests || 0) + 1;
-    saveSession(userId, session);
+    createTestHandler.clearQuizSession(chatId);
     askForTopic(chatId, session, 'explaining_topic', config.messages.explainTopic);
     return;
   }
 
   if (text === '🧠 Створити тест') {
-    session.totalAiRequests = (session.totalAiRequests || 0) + 1;
-    userService.recordTestCompleted(session);
-    saveSession(userId, session);
-    userStates[chatId] = session.selectedSubject ? 'subject_selected' : 'main_menu';
+    createTestHandler.startCreateTest(bot, chatId, session, userStates, config);
+    return;
+  }
 
-    bot.sendMessage(chatId, config.messages.createTest, {
-      parse_mode: 'HTML',
-      ...getActionKeyboard(session),
-    });
-
-    questHandler.applyQuestTrigger(bot, chatId, userId, 'complete_test', session, saveSession);
+  if (text === '⚔️ Дуель знань') {
+    duelHandler.showDuelMenu(bot, chatId, userId, session, config);
     return;
   }
 
@@ -602,8 +697,16 @@ bot.on('message', (msg) => {
     return;
   }
 
+  if (text === '⭐ Premium') {
+    userStates[chatId] = 'viewing_premium';
+    showPremiumInfo(chatId, userId, session);
+    return;
+  }
+
   if (text === '⬅️ Повернутися в меню') {
     delete userStates[chatId];
+    createTestHandler.clearQuizSession(chatId);
+    duelHandler.clearUserDuelSearch(userId, chatId, userStates);
     if (session.examDraft) {
       delete session.examDraft;
       saveSession(userId, session);
@@ -669,6 +772,8 @@ async function startBot() {
     { command: 'start', description: 'Почати роботу з ботом' },
     { command: 'add_exam', description: 'Додати контрольну роботу' },
     { command: 'my_exams', description: 'Мої майбутні контрольні' },
+    { command: 'duel', description: 'Дуель знань — пошук, друг по ID або код' },
+    { command: 'premium', description: 'Статус Premium (фото та голос)' },
     { command: 'quests', description: 'Твої квести та прогрес' },
   ]);
 

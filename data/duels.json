@@ -1,0 +1,178 @@
+{
+  "duels": [
+    {
+      "id": "dmrz7pl9yc33b",
+      "player1Id": "8759683710",
+      "player2Id": "ai",
+      "player1ChatId": 8759683710,
+      "player2ChatId": 8759683710,
+      "player1Name": "Максим",
+      "player2Name": "ШІ-суперник",
+      "status": "finished",
+      "currentQuestion": 4,
+      "scores": {
+        "8759683710": 520,
+        "ai": 536
+      },
+      "answers": {
+        "0": {
+          "messageIds": {
+            "8759683710": 906
+          },
+          "ai": {
+            "optionIndex": 0,
+            "answeredAt": "2026-07-24T17:26:47.461Z",
+            "elapsedMs": 4964,
+            "isCorrect": true,
+            "points": 138
+          },
+          "8759683710": {
+            "optionIndex": 0,
+            "answeredAt": "2026-07-24T17:26:51.507Z",
+            "elapsedMs": 9010,
+            "isCorrect": true,
+            "points": 127
+          }
+        },
+        "1": {
+          "messageIds": {
+            "8759683710": 909
+          },
+          "ai": {
+            "optionIndex": 2,
+            "answeredAt": "2026-07-24T17:26:55.811Z",
+            "elapsedMs": 4061,
+            "isCorrect": false,
+            "points": 0
+          },
+          "8759683710": {
+            "optionIndex": 1,
+            "answeredAt": "2026-07-24T17:27:00.216Z",
+            "elapsedMs": 8466,
+            "isCorrect": true,
+            "points": 129
+          }
+        },
+        "2": {
+          "messageIds": {
+            "8759683710": 912
+          },
+          "ai": {
+            "optionIndex": 1,
+            "answeredAt": "2026-07-24T17:27:04.858Z",
+            "elapsedMs": 4392,
+            "isCorrect": true,
+            "points": 139
+          },
+          "8759683710": {
+            "optionIndex": 3,
+            "answeredAt": "2026-07-24T17:27:14.032Z",
+            "elapsedMs": 13566,
+            "isCorrect": false,
+            "points": 0
+          }
+        },
+        "3": {
+          "messageIds": {
+            "8759683710": 915
+          },
+          "8759683710": {
+            "optionIndex": 2,
+            "answeredAt": "2026-07-24T17:27:20.091Z",
+            "elapsedMs": 5824,
+            "isCorrect": true,
+            "points": 135
+          },
+          "ai": {
+            "optionIndex": 2,
+            "answeredAt": "2026-07-24T17:27:20.144Z",
+            "elapsedMs": 5877,
+            "isCorrect": true,
+            "points": 135
+          }
+        },
+        "4": {
+          "messageIds": {
+            "8759683710": 918
+          },
+          "8759683710": {
+            "optionIndex": 0,
+            "answeredAt": "2026-07-24T17:27:28.865Z",
+            "elapsedMs": 8575,
+            "isCorrect": true,
+            "points": 129
+          },
+          "ai": {
+            "optionIndex": 0,
+            "answeredAt": "2026-07-24T17:27:30.727Z",
+            "elapsedMs": 10437,
+            "isCorrect": true,
+            "points": 124
+          }
+        }
+      },
+      "questions": [
+        {
+          "question": "Яка частина мови вивчає будову слова?",
+          "options": [
+            "Словотвір",
+            "Морфологія",
+            "Синтаксис",
+            "Фонетика"
+          ],
+          "correctIndex": 0
+        },
+        {
+          "question": "У якому рядку всі слова є іменниками?",
+          "options": [
+            "Біг, бігати, бігун",
+            "Стіл, дерево, радість",
+            "Синій, небо, малювати",
+            "Весело, сон, швидкий"
+          ],
+          "correctIndex": 1
+        },
+        {
+          "question": "Який розділ мовознавства вивчає звуки мови?",
+          "options": [
+            "Лексикологія",
+            "Фонетика",
+            "Пунктуація",
+            "Орфографія"
+          ],
+          "correctIndex": 1
+        },
+        {
+          "question": "Скільки звуків у слові «кущ»?",
+          "options": [
+            "2",
+            "3",
+            "4",
+            "5"
+          ],
+          "correctIndex": 2
+        },
+        {
+          "question": "Яка частина речення відповідає на питання хто? що?",
+          "options": [
+            "Підмет",
+            "Присудок",
+            "Додаток",
+            "Означення"
+          ],
+          "correctIndex": 0
+        }
+      ],
+      "questionStartedAt": "2026-07-24T17:27:20.290Z",
+      "class": 5,
+      "subject": "Українська мова",
+      "vsAi": true,
+      "createdAt": "2026-07-24T17:26:40.630Z",
+      "finishedAt": "2026-07-24T17:27:30.729Z",
+      "winnerId": "ai",
+      "result": "win_b"
+    }
+  ],
+  "matchmakingPool": [],
+  "invites": []
+}
