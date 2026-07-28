@@ -33,6 +33,11 @@ module.exports = {
     // Comma-separated IDs can also be set via PREMIUM_USER_IDS in .env
     maxPhotoBytes: 8 * 1024 * 1024,
     maxVoiceBytes: 4 * 1024 * 1024,
+    // Shop products: id, label, days, cost (XP)
+    products: [
+      { id: 'premium_7', label: 'Premium — 7 днів', days: 7, cost: 1000 },
+      { id: 'premium_30', label: 'Premium — 30 днів', days: 30, cost: 5000 },
+    ],
   },
 
   duel: {

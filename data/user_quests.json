@@ -21,6 +21,28 @@
         "isCompleted": false,
         "completedAt": null
       }
+    },
+    "8759683710": {
+      "exam_prep": {
+        "currentProgress": 0,
+        "isCompleted": false,
+        "completedAt": null
+      },
+      "topic_explorer": {
+        "currentProgress": 0,
+        "isCompleted": false,
+        "completedAt": null
+      },
+      "test_runner": {
+        "currentProgress": 0,
+        "isCompleted": false,
+        "completedAt": null
+      },
+      "daily_hero": {
+        "currentProgress": 1,
+        "isCompleted": false,
+        "completedAt": null
+      }
     }
   }
 }

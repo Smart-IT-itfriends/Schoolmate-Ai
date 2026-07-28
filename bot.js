@@ -205,14 +205,26 @@ XP: <b>${xp}</b>
 }
 
 function showPremiumInfo(chatId, userId, session) {
-  const status = premiumService.isPremium(session, userId) ? 'активний ⭐' : 'неактивний';
+  const isActive = premiumService.isPremium(session, userId);
+  const status = isActive ? 'активний ⭐' : 'неактивний';
   const message = config.messages.premiumInfo
     .replace('{status}', status)
     .replace('{userId}', String(userId));
 
+  // Build products keyboard
+  const products = premiumService.getProducts();
+  const inlineKeyboard = products.map((p) => [
+    {
+      text: `${p.label} — ${p.cost} XP`,
+      callback_data: `premium:show_buy:${p.id}`,
+    },
+  ]);
+
   bot.sendMessage(chatId, message, {
     parse_mode: 'HTML',
-    ...backKeyboard,
+    reply_markup: {
+      inline_keyboard: inlineKeyboard,
+    },
   });
 }
 
@@ -453,6 +465,73 @@ bot.on('callback_query', async (query) => {
 
   if (await createTestHandler.handleQuizCallback(bot, query, session, userStates, config, saveSession)) {
     return;
+  }
+
+  // Handle premium store callbacks: premium:show_buy:<id> | premium:confirm:<id> | premium:cancel
+  try {
+    const data = String(query.data || '');
+    if (data.startsWith('premium:')) {
+      const parts = data.split(':');
+      const action = parts[1];
+      const productId = parts[2];
+
+      await bot.answerCallbackQuery(query.id);
+
+      if (action === 'show_buy' && productId) {
+        const products = premiumService.getProducts();
+        const product = products.find((p) => p.id === productId);
+        if (!product) {
+          await bot.sendMessage(query.message.chat.id, '❌ Товар не знайдено.');
+          return;
+        }
+
+        const confirmKeyboard = {
+          reply_markup: {
+            inline_keyboard: [
+              [
+                { text: `Підтвердити — витратити ${product.cost} XP`, callback_data: `premium:confirm:${product.id}` },
+                { text: 'Скасувати', callback_data: 'premium:cancel' },
+              ],
+            ],
+          },
+        };
+
+        await bot.sendMessage(query.message.chat.id, `Ви впевнені, що хочете витратити ${product.cost} XP на ${product.label}?`, confirmKeyboard);
+        return;
+      }
+
+      if (action === 'confirm' && productId) {
+        const result = await premiumService.purchaseProduct(query.from.id, productId);
+
+        if (!result || !result.success) {
+          if (result && result.error === 'insufficient') {
+            await bot.sendMessage(query.message.chat.id, `❌ Недостатньо XP. Потрібно ${result.needed} XP, у вас ${result.balance} XP.`);
+            return;
+          }
+
+          await bot.sendMessage(query.message.chat.id, '❌ Не вдалося виконати покупку. Спробуйте пізніше.');
+          return;
+        }
+
+        // Persist session to file and inform user
+        const newSession = result.session;
+        saveSession(query.from.id, newSession);
+
+        const untilText = formatIsoDate(newSession.premiumUntil);
+        await bot.sendMessage(query.message.chat.id, `✅ Успіх! Ви отримали ${result.product.label}.
+Термін дії: <b>${untilText}</b>
+Ваш поточний XP: <b>${result.newXp}</b>`, { parse_mode: 'HTML' });
+        return;
+      }
+
+      if (action === 'cancel') {
+        await bot.sendMessage(query.message.chat.id, '❌ Операцію скасовано.');
+        await bot.answerCallbackQuery(query.id);
+        return;
+      }
+    }
+  } catch (err) {
+    console.error('Premium callback error:', err.message || err);
   }
 
   examHandler.handleExamCallback(bot, query, session, userStates, config);
