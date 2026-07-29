@@ -17,6 +17,7 @@ const duelHandler = require('./handlers/duel');
 const questHandler = require('./handlers/quests');
 const supportHandler = require('./handlers/support');
 const globalChatHandler = require('./handlers/globalChat');
+const rouletteHandler = require('./handlers/roulette');
 const globalChatService = require('./services/globalChatService');
 const { createGlobalChatServer } = require('./services/globalChatRealtime');
 const examScheduler = require('./services/examScheduler');
@@ -796,6 +797,17 @@ bot.onText(/\/quests/, (msg) => {
   questHandler.showQuests(bot, chatId, userId);
 });
 
+bot.onText(/\/roulette(?:@\w+)?/, async (msg) => {
+  const chatId = msg.chat.id;
+  const userId = msg.from.id;
+  const session = getSession(userId);
+  if (!session || session.step !== 'completed') {
+    await bot.sendMessage(chatId, 'Спочатку заверши реєстрацію через /start');
+    return;
+  }
+  rouletteHandler.startRoulette(bot, chatId, userId, session, userStates, config);
+});
+
 bot.onText(/\/global_chat(?:@\w+)?/, async (msg) => {
   const chatId = msg.chat.id;
   const userId = msg.from.id;
@@ -826,6 +838,10 @@ bot.on('callback_query', async (query) => {
   const data = String(query.data || '');
 
   if (await globalChatHandler.handleGlobalChatCallback(bot, query, config)) {
+    return;
+  }
+
+  if (await rouletteHandler.handleRouletteCallback(bot, query, session, userStates, config, saveSession)) {
     return;
   }
 
@@ -1180,6 +1196,24 @@ bot.on('message', async (msg) => {
     return;
   }
 
+  if (rouletteHandler.isRouletteMenuText(text)) {
+    if (session.step !== 'completed') {
+      bot.sendMessage(chatId, 'Спочатку заверши реєстрацію через /start');
+      return;
+    }
+    rouletteHandler.startRoulette(bot, chatId, userId, session, userStates, config);
+    return;
+  }
+
+  if (rouletteHandler.isLeaveRouletteText(text)) {
+    rouletteHandler.leaveRoulette(bot, chatId, userId, userStates);
+    return;
+  }
+
+  if (await rouletteHandler.handleRouletteMessage(bot, chatId, userId, text, session, userStates, config, saveSession)) {
+    return;
+  }
+
   if (duelHandler.handleDuelMessage(bot, chatId, userId, text, session, userStates, config)) {
     return;
   }
@@ -1193,6 +1227,7 @@ bot.on('message', async (msg) => {
     duelHandler.clearUserDuelSearch(userId, chatId, userStates);
     supportHandler.clearSupportState(chatId, userId, userStates);
     globalChatHandler.clearGlobalChatState(chatId, userId, userStates);
+    rouletteHandler.clearRouletteState(chatId, userId, userStates);
     showMainMenu(chatId, session);
     return;
   }
@@ -1330,6 +1365,7 @@ bot.on('message', async (msg) => {
     duelHandler.clearUserDuelSearch(userId, chatId, userStates);
     supportHandler.clearSupportState(chatId, userId, userStates);
     globalChatHandler.clearGlobalChatState(chatId, userId, userStates);
+    rouletteHandler.clearRouletteState(chatId, userId, userStates);
     if (session.examDraft) {
       delete session.examDraft;
       saveSession(userId, session);
@@ -1407,6 +1443,7 @@ async function startBot() {
     { command: 'ban', description: 'Заблокувати користувача' },
     { command: 'unban', description: 'Розблокувати користувача' },
     { command: 'global_chat', description: 'Глобальний чат з онлайн-користувачами' },
+    { command: 'roulette', description: 'Рулетка XP — ставка та випадковий результат' },
     { command: 'stats', description: 'Системна статистика для адмінів' },
     { command: 'leaderboard', description: 'Топ-100 користувачів за XP' },
   ]);
