@@ -15,6 +15,7 @@ const createTestHandler = require('./handlers/createTest');
 const mediaHandler = require('./handlers/media');
 const duelHandler = require('./handlers/duel');
 const questHandler = require('./handlers/quests');
+const supportHandler = require('./handlers/support');
 const examScheduler = require('./services/examScheduler');
 const premiumService = require('./services/premiumService');
 const leaderboardService = require('./services/leaderboardService');
@@ -999,6 +1000,14 @@ bot.on('message', async (msg) => {
       return;
     }
 
+    if (msg.photo && await supportHandler.handleSupportPhoto(bot, msg, session, userStates, config)) {
+      userService.recordMessage(session);
+      saveSession(userId, session);
+      applyInactivityCheck(chatId, userId, session);
+      touchUserActivity(userId, session);
+      return;
+    }
+
     userService.recordMessage(session);
     saveSession(userId, session);
     applyInactivityCheck(chatId, userId, session);
@@ -1011,6 +1020,14 @@ bot.on('message', async (msg) => {
   if (msg.document) {
     if (!session) {
       bot.sendMessage(chatId, 'Натисни /start, щоб почати.');
+      return;
+    }
+
+    if (await supportHandler.handleSupportDocument(bot, msg, session, userStates, config)) {
+      userService.recordMessage(session);
+      saveSession(userId, session);
+      applyInactivityCheck(chatId, userId, session);
+      touchUserActivity(userId, session);
       return;
     }
 
@@ -1097,6 +1114,24 @@ bot.on('message', async (msg) => {
     return;
   }
 
+  if (supportHandler.isSupportMenuText(text)) {
+    if (session.step !== 'completed') {
+      bot.sendMessage(chatId, 'Спочатку заверши реєстрацію через /start');
+      return;
+    }
+    supportHandler.startSupport(bot, chatId, userStates, config);
+    return;
+  }
+
+  if (supportHandler.isSupportCancelText(text)) {
+    supportHandler.cancelSupport(bot, chatId, userId, userStates, config);
+    return;
+  }
+
+  if (await supportHandler.handleSupportText(bot, chatId, userId, text, session, userStates, config)) {
+    return;
+  }
+
   if (duelHandler.handleDuelMessage(bot, chatId, userId, text, session, userStates, config)) {
     return;
   }
@@ -1108,6 +1143,7 @@ bot.on('message', async (msg) => {
   if (text === '📋 Головне меню') {
     createTestHandler.clearQuizSession(chatId);
     duelHandler.clearUserDuelSearch(userId, chatId, userStates);
+    supportHandler.clearSupportState(chatId, userId, userStates);
     showMainMenu(chatId, session);
     return;
   }
@@ -1243,6 +1279,7 @@ bot.on('message', async (msg) => {
     delete userStates[chatId];
     createTestHandler.clearQuizSession(chatId);
     duelHandler.clearUserDuelSearch(userId, chatId, userStates);
+    supportHandler.clearSupportState(chatId, userId, userStates);
     if (session.examDraft) {
       delete session.examDraft;
       saveSession(userId, session);
