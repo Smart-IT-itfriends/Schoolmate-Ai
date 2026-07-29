@@ -12,6 +12,7 @@ function startRegistration(bot, chatId, user, isReregister = false) {
     startedAt: new Date().toISOString(),
     completedAt: previousSession?.completedAt || null,
     xp: previousSession?.xp || 0,
+    level: previousSession?.level || 1,
     totalAiRequests: previousSession?.totalAiRequests || 0,
     dailyStreak: previousSession?.dailyStreak || 0,
     lastRewardClaimedDate: previousSession?.lastRewardClaimedDate || null,

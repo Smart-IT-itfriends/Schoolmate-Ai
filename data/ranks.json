@@ -1,0 +1,12 @@
+{
+  "base": 100,
+  "maxLevel": 10000,
+  "titles": [
+    { "level": 1, "title": "Новачок", "badge": "🌱" },
+    { "level": 2, "title": "Учень", "badge": "📘" },
+    { "level": 3, "title": "Знавець", "badge": "🎓" },
+    { "level": 4, "title": "Майстер", "badge": "🏅" },
+    { "level": 5, "title": "Легенда", "badge": "🚀" }
+  ],
+  "customThresholds": []
+}

@@ -14,3 +14,12 @@ test('support knowledge includes roulette, daily spin and global chat', () => {
   assert.match(knowledge, /\/global_chat/);
   assert.match(knowledge, /ОКРЕМА функція/);
 });
+
+test('support knowledge includes rank system', () => {
+  const knowledge = buildBotKnowledge(config);
+
+  assert.match(knowledge, /Система рангів/);
+  assert.match(knowledge, /\/profile/);
+  assert.match(knowledge, /\/top/);
+  assert.match(knowledge, /Level Up/);
+});

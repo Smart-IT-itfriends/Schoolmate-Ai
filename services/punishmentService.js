@@ -1,4 +1,5 @@
 const MS_HOUR = 60 * 60 * 1000;
+const rankService = require('./rankService');
 
 function getHoursSince(lastActivityDate) {
   if (!lastActivityDate) {
@@ -58,9 +59,8 @@ function checkInactivityPunishment(session, config) {
   }
 
   if (daysSince >= hardThresholdDays) {
-    const previousXp = session.xp || 0;
-    session.xp = Math.max(0, previousXp - xpPenalty);
-    const deductedXp = previousXp - session.xp;
+    const xpResult = rankService.applyXpChange(session, -xpPenalty, config);
+    const deductedXp = Math.abs(xpResult.delta);
     changed = true;
 
     messages.push(
@@ -69,6 +69,8 @@ function checkInactivityPunishment(session, config) {
         remaining: session.xp,
       })
     );
+
+    return { session, messages, changed, levelBefore: xpResult.oldLevel };
   } else {
     messages.push(config.messages.punishmentSoft);
   }
@@ -101,25 +103,25 @@ function touchActivity(session) {
 
 function buyFreezeItem(session, config) {
   const cost = config.punishment?.freezeItemCost ?? 100;
-  const xp = session.xp || 0;
 
   if (session.hasFreezeItem) {
     return { success: false, message: config.messages.freezeAlreadyOwned };
   }
 
-  if (xp < cost) {
+  if ((session.xp || 0) < cost) {
     return {
       success: false,
       message: fillTemplate(config.messages.freezeNotEnoughXp, { cost }),
     };
   }
 
-  session.xp = xp - cost;
+  const xpResult = rankService.applyXpChange(session, -cost, config);
   session.hasFreezeItem = true;
 
   return {
     success: true,
     message: fillTemplate(config.messages.freezePurchased, { cost }),
+    levelBefore: xpResult.oldLevel,
   };
 }
 

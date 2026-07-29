@@ -1,5 +1,8 @@
 const fs = require('fs');
 const path = require('path');
+const config = require('../config');
+const rankService = require('./rankService');
+const leaderboardService = require('./leaderboardService');
 
 const QUESTS_FILE = path.join(__dirname, '..', 'data', 'quests.json');
 const USER_QUESTS_FILE = path.join(__dirname, '..', 'data', 'user_quests.json');
@@ -164,7 +167,7 @@ function triggerQuestProgress(userId, targetType, session) {
       progress.completedAt = new Date().toISOString();
 
       if (session) {
-        session.xp = (session.xp || 0) + quest.rewardPoints;
+        rankService.applyXpChange(session, quest.rewardPoints, config);
         leaderboardService.recordXpChange(session, quest.rewardPoints);
       }
 

@@ -41,7 +41,7 @@ async function handleDailySpin(bot, chatId, userId, session, config, saveSession
     return;
   }
 
-  saveSession(userId, session);
+  saveSession(userId, session, { levelBefore: result.levelBefore });
 
   const text = [
     '🎡 <b>Щоденна рулетка</b>',

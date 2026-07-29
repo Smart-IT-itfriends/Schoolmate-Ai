@@ -1,4 +1,5 @@
 const leaderboardService = require('./leaderboardService');
+const rankService = require('./rankService');
 
 const DEFAULT_REWARDS = [
   { id: 'nothing', label: 'Нічого 😔', weight: 35, type: 'none' },
@@ -52,7 +53,7 @@ function applyReward(session, reward, config) {
 
   if (item.type === 'xp') {
     const amount = Number(item.amount) || 0;
-    session.xp = (session.xp || 0) + amount;
+    rankService.applyXpChange(session, amount, config);
     if (amount > 0) {
       leaderboardService.recordXpChange(session, amount);
     }
@@ -67,7 +68,7 @@ function applyReward(session, reward, config) {
   if (item.type === 'freeze') {
     if (session.hasFreezeItem) {
       const fallbackXp = Number(config?.dailySpin?.freezeFallbackXp || 15);
-      session.xp = (session.xp || 0) + fallbackXp;
+      rankService.applyXpChange(session, fallbackXp, config);
       leaderboardService.recordXpChange(session, fallbackXp);
       return {
         type: 'xp',
@@ -100,6 +101,7 @@ function spinDaily(session, config) {
     };
   }
 
+  const levelBefore = rankService.calculateLevel(session.xp || 0, config).currentLevel;
   const reward = pickReward(config);
   const applied = applyReward(session, reward, config);
   session.lastDailySpinDate = new Date().toISOString();
@@ -108,6 +110,7 @@ function spinDaily(session, config) {
     ok: true,
     reward,
     applied,
+    levelBefore,
   };
 }
 

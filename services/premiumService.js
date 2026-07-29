@@ -5,6 +5,7 @@
  */
 const config = require('../config');
 const userService = require('./userService');
+const rankService = require('./rankService');
 
 const locks = new Map();
 
@@ -63,8 +64,7 @@ async function purchaseProduct(userId, productId) {
       return { success: false, error: 'insufficient', needed: product.cost, balance: session.xp };
     }
 
-    // Deduct XP
-    session.xp -= product.cost;
+    const xpResult = rankService.applyXpChange(session, -product.cost, config);
 
     // Compute premiumUntil (extend if active)
     const now = Date.now();
@@ -73,9 +73,7 @@ async function purchaseProduct(userId, productId) {
     const newUntil = new Date(base + product.days * 24 * 60 * 60 * 1000).toISOString();
     session.premiumUntil = newUntil;
 
-    // Persist
-    users[userKey] = session;
-    userService.saveUsers(users);
+    userService.saveSession(userId, session, { levelBefore: xpResult.oldLevel });
 
     return { success: true, session, product, newXp: session.xp, premiumUntil: newUntil };
   } catch (err) {

@@ -1,4 +1,5 @@
 const rouletteService = require('../services/rouletteService');
+const rankService = require('../services/rankService');
 const leaderboardService = require('../services/leaderboardService');
 const { mainKeyboard } = require('../keyboards');
 
@@ -108,13 +109,11 @@ function clearRouletteState(chatId, userId, userStates) {
   delete rouletteDrafts[userId];
 }
 
-function applySpinResult(session, result) {
+function applySpinResult(session, result, config) {
   if (result.won) {
-    session.xp = (session.xp || 0) + result.profit;
-    leaderboardService.recordXpChange(session, result.profit);
-  } else {
-    session.xp = Math.max(0, (session.xp || 0) + result.netChange);
+    return rankService.applyXpChange(session, result.profit, config);
   }
+  return rankService.applyXpChange(session, result.netChange, config);
 }
 
 async function performSpin(bot, chatId, userId, session, bet, color, config, saveSession) {
@@ -131,8 +130,11 @@ async function performSpin(bot, chatId, userId, session, bet, color, config, sav
   await new Promise((resolve) => setTimeout(resolve, 1400));
 
   const result = rouletteService.resolveSpin(validation.bet, color, config);
-  applySpinResult(session, result);
-  saveSession(userId, session);
+  const xpResult = applySpinResult(session, result, config);
+  if (result.won && result.profit > 0) {
+    leaderboardService.recordXpChange(session, result.profit);
+  }
+  saveSession(userId, session, { levelBefore: xpResult.oldLevel });
 
   const wheelLabel = rouletteService.colorLabel(result.wheel.color);
   const chosenLabel = rouletteService.colorLabel(color);

@@ -79,6 +79,19 @@ module.exports = {
     ],
   },
 
+  ranks: {
+    base: 100,
+    maxLevel: 10000,
+    titles: [
+      { level: 1, title: 'Новачок', badge: '🌱' },
+      { level: 2, title: 'Учень', badge: '📘' },
+      { level: 3, title: 'Знавець', badge: '🎓' },
+      { level: 4, title: 'Майстер', badge: '🏅' },
+      { level: 5, title: 'Легенда', badge: '🚀' },
+    ],
+    customThresholds: [],
+  },
+
   duel: {
     questionCount: 5,
     answerTimeoutMs: 20000,
@@ -135,7 +148,10 @@ module.exports = {
       '/stats — системна статистика\n' +
       '/chat_mute <user_id> [хв] — мут у глобальному чаті\n' +
       '/chat_unmute <user_id> — зняти мут\n' +
-      '/chat_delete <msg_id> — видалити повідомлення чату',
+      '/chat_delete <msg_id> — видалити повідомлення чату\n' +
+      '/set_level <user_id> <level> — встановити рівень користувача\n' +
+      '/ranks — таблиця рангів та порогів XP\n' +
+      '/set_rank <level> <min_xp> [title] — змінити поріг XP для рівня',
     adminUserNotFound: '❌ Користувача не знайдено. Перевір ID або username.',
     adminInvalidArgs: '❌ Невірні аргументи. Перевір формат команди та спробуй знову.',
     adminActionSuccess: '✅ Операцію виконано успішно.',

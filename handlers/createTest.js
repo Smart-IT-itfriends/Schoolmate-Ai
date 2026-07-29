@@ -4,6 +4,7 @@ const { getActionKeyboard, backKeyboard } = require('../keyboards');
 const { askAI, AIServiceError } = require('../services/aiService');
 const userService = require('../services/userService');
 const leaderboardService = require('../services/leaderboardService');
+const rankService = require('../services/rankService');
 const questHandler = require('./quests');
 
 const OPTION_LABELS = ['А', 'Б', 'В', 'Г', 'Д', 'Е'];
@@ -259,8 +260,10 @@ async function finishQuiz(bot, chatId, userId, session, userStates, config, save
   const doubleXp = isDoubleXpActive(session);
   const earnedXp = doubleXp ? baseXp * 2 : baseXp;
 
-  session.xp = (session.xp || 0) + earnedXp;
-  leaderboardService.recordXpChange(session, earnedXp);
+  const xpResult = rankService.applyXpChange(session, earnedXp, config);
+  if (earnedXp > 0) {
+    leaderboardService.recordXpChange(session, earnedXp);
+  }
   userService.recordTestCompleted(session);
 
   if (doubleXp && earnedXp > 0) {
@@ -268,7 +271,7 @@ async function finishQuiz(bot, chatId, userId, session, userStates, config, save
     delete session.buffExpiresAt;
   }
 
-  saveSession(userId, session);
+  saveSession(userId, session, { levelBefore: xpResult.oldLevel });
 
   if (!stoppedEarly) {
     questHandler.applyQuestTrigger(bot, chatId, userId, 'complete_test', session, saveSession);

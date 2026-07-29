@@ -24,6 +24,8 @@ const { createGlobalChatServer } = require('./services/globalChatRealtime');
 const examScheduler = require('./services/examScheduler');
 const premiumService = require('./services/premiumService');
 const leaderboardService = require('./services/leaderboardService');
+const rankService = require('./services/rankService');
+const levelUpHandler = require('./events/levelUpHandler');
 const { matchesMenuText } = require('./services/menuText');
 const token = process.env.TELEGRAM_TOKEN || process.env.BOT_TOKEN;
 
@@ -50,7 +52,7 @@ function applyInactivityCheck(chatId, userId, session) {
   const result = punishmentService.checkInactivityPunishment(session, config);
 
   if (result.changed) {
-    saveSession(userId, result.session);
+    saveSession(userId, result.session, { levelBefore: result.levelBefore });
   }
 
   for (const message of result.messages) {
@@ -69,8 +71,8 @@ function getSession(userId) {
   return userService.getSession(userId);
 }
 
-function saveSession(userId, session) {
-  return userService.saveSession(userId, session);
+function saveSession(userId, session, options = {}) {
+  return userService.saveSession(userId, session, options);
 }
 
 function buildSubjectsKeyboard(classNum) {
@@ -140,27 +142,37 @@ function getDailyReward(streak) {
   return rewardByDay[streak] || rewardByDay[1];
 }
 
-function buildProfileMessage(session) {
+function buildProfileMessage(session, user) {
   const registeredAt = session.completedAt || session.startedAt || new Date().toISOString();
   const premiumLabel = premiumService.isPremium(session, session.telegramId) ? '⭐ Так' : 'Ні';
+  const rankBlock = rankService.buildProfileRankBlock(session, config, user?.username || session.username);
+  const subjectText = session.selectedSubject || 'Не обрано';
+  const registeredLabel = formatDate(registeredAt);
 
   return [
-    '<b>👤 Мій профіль</b>',
+    rankBlock,
     '',
-    `Ім'я: <b>${session.name || 'Невідомо'}</b>`,
-    `Клас: <b>${session.class || 'Невідомо'}</b>`,
-    `Предмет: <b>${session.selectedSubject || 'Не обрано'}</b>`,
-    `Premium: <b>${premiumLabel}</b>`,
-    `Дата реєстрації: <b>${formatDate(registeredAt)}</b>`,
-    `Звернень до AI: <b>${session.totalAiRequests || 0}</b>`,
+    `👤 <b>Ім'я:</b> ${session.name || 'Невідомо'}`,
+    `🏫 <b>Клас:</b> ${session.class || 'Невідомо'}`,
+    `📚 <b>Предмет:</b> ${subjectText}`,
+    `⭐ <b>Premium:</b> ${premiumLabel}`,
+    `⚔️ <b>Рейтинг дуелей:</b> ${session.duelRating || 1000}`,
+    `📅 <b>Дата реєстрації:</b> ${registeredLabel}`,
+    `🤖 <b>Звернень до AI:</b> ${session.totalAiRequests || 0}`,
+    `🔥 <b>Стрік:</b> ${session.dailyStreak || 0} днів`,
   ].join('\n');
 }
 
 function buildProgressMessage(session) {
+  const stats = rankService.calculateLevel(session.xp || 0, config);
   return [
     '<b>📈 Мій прогрес</b>',
     '',
-    `XP: <b>${session.xp || 0}</b>`,
+    `🎖 <b>Ранг:</b> [Lvl ${stats.currentLevel}] ${stats.rankBadge} ${stats.currentRankTitle}`,
+    `⭐ <b>XP:</b> ${stats.xp}${stats.isMaxLevel ? '' : ` / ${stats.nextLevelXp}`}`,
+    `📊 <b>Прогрес:</b> ${rankService.buildProgressBar(stats.progressPercent)}`,
+    stats.isMaxLevel ? '🏆 Максимальний рівень!' : `До наступного рівня: <b>${stats.xpToNextLevel} XP</b>`,
+    '',
     `Звернень до AI: <b>${session.totalAiRequests || 0}</b>`,
     `Стрік активності: <b>${session.dailyStreak || 0} днів</b>`,
     `Остання нагорода: <b>${formatDate(session.lastRewardClaimedDate)}</b>`,
@@ -188,26 +200,45 @@ function formatIsoDate(dateString) {
   });
 }
 
-function showUserProfile(chatId, session) {
-  const subjectText = session.selectedSubject || 'Не обрано';
-  const registeredAt = formatIsoDate(session.completedAt || session.startedAt);
-  const aiRequests = session.totalAiRequests || 0;
-  const xp = session.xp || 0;
-  const streak = session.dailyStreak || 0;
-
-  const message = `👤 <b>Мій профіль</b>
-
-Ім'я: <b>${session.name || 'Невідомо'}</b>
-Клас: <b>${session.class || 'Не вказано'}</b>
-Обраний предмет: <b>${subjectText}</b>
-Premium: <b>${premiumService.isPremium(session, session.telegramId) ? '⭐ Так' : 'Ні'}</b>
-Рейтинг дуелей: <b>${session.duelRating || 1000}</b>
-Дата реєстрації: <b>${registeredAt}</b>
-Звернень до AI: <b>${aiRequests}</b>
-XP: <b>${xp}</b>
-Поточний стрік: <b>${streak}</b>`;
+function showUserProfile(chatId, session, user) {
+  const message = buildProfileMessage(session, user);
 
   bot.sendMessage(chatId, message, {
+    parse_mode: 'HTML',
+    ...backKeyboard,
+  });
+}
+
+function showTopUsers(chatId) {
+  const users = userService.loadUsers();
+  const rows = Object.entries(users)
+    .map(([userId, session]) => ({
+      userId,
+      session,
+      stats: rankService.calculateLevel(session.xp || 0, config),
+    }))
+    .sort((a, b) => {
+      if (b.stats.currentLevel !== a.stats.currentLevel) {
+        return b.stats.currentLevel - a.stats.currentLevel;
+      }
+      return b.stats.xp - a.stats.xp;
+    })
+    .slice(0, 10);
+
+  if (rows.length === 0) {
+    bot.sendMessage(chatId, '🏆 Поки що немає користувачів у рейтингу.', backKeyboard);
+    return;
+  }
+
+  const lines = rows.map((entry, index) => {
+    const name = entry.session.username
+      ? `@${entry.session.username}`
+      : (entry.session.name || `ID ${entry.userId}`);
+    const medal = index === 0 ? '🥇 ' : index === 1 ? '🥈 ' : index === 2 ? '🥉 ' : '';
+    return `${medal}<b>${index + 1}.</b> ${name} — Lvl ${entry.stats.currentLevel} ${entry.stats.rankBadge} · <b>${entry.stats.xp}</b> XP`;
+  });
+
+  bot.sendMessage(chatId, `🏆 <b>Топ-10 за рівнем та XP</b>\n\n${lines.join('\n')}`, {
     parse_mode: 'HTML',
     ...backKeyboard,
   });
@@ -317,13 +348,16 @@ function handleDailyReward(chatId, userId, session) {
   }
 
   if (reward.type === 'XP') {
-    session.xp = (session.xp || 0) + reward.amount;
+    const xpResult = rankService.applyXpChange(session, reward.amount, config);
+    leaderboardService.recordXpChange(session, reward.amount);
+    saveSession(userId, session, { levelBefore: xpResult.oldLevel });
   } else if (reward.type === 'BUFF') {
     session.activeBuff = reward.amount;
     session.buffExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+    saveSession(userId, session);
+  } else {
+    saveSession(userId, session);
   }
-
-  saveSession(userId, session);
 
   bot.sendMessage(chatId, '📦 Відкриваємо скриню...');
 
@@ -613,7 +647,114 @@ bot.onText(/\/give_xp(?:@\w+)?\s+([^\s]+)(?:\s+(\d+))?/, (msg, match) => {
   }
 
   adminService.logAction(user, 'give_xp', target.id, `amount=${amount}`);
-  bot.sendMessage(chatId, `✅ Додано ${amount} XP користувачу ${target.id}. Новий баланс: ${updated.xp}.`, { parse_mode: 'HTML' });
+  const stats = rankService.calculateLevel(updated.xp || 0, config);
+  bot.sendMessage(chatId, `✅ Додано ${amount} XP користувачу ${target.id}.\nНовий баланс: <b>${updated.xp} XP</b>\nРівень: <b>${stats.currentLevel}</b> (${stats.currentRankTitle})`, { parse_mode: 'HTML' });
+});
+
+bot.onText(/\/set_level(?:@\w+)?\s+(\S+)\s+(\d+)/, (msg, match) => {
+  const chatId = msg.chat.id;
+  const user = msg.from;
+
+  if (!adminService.isAdminUser(user)) {
+    bot.sendMessage(chatId, config.messages.adminAccessDenied);
+    return;
+  }
+
+  const targetId = match[1];
+  const level = Number(match[2]);
+
+  if (!targetId || !Number.isFinite(level) || level < 1) {
+    bot.sendMessage(chatId, 'Використання: /set_level <user_id> <level>', { parse_mode: 'HTML' });
+    return;
+  }
+
+  const target = adminService.getUserByIdentifier(targetId);
+  if (!target || !target.session) {
+    bot.sendMessage(chatId, config.messages.adminUserNotFound);
+    return;
+  }
+
+  const updated = adminService.setUserLevel(target.id, level);
+  if (!updated) {
+    bot.sendMessage(chatId, config.messages.adminActionFailed);
+    return;
+  }
+
+  const stats = rankService.calculateLevel(updated.xp || 0, config);
+  adminService.logAction(user, 'set_level', target.id, `level=${stats.currentLevel}; xp=${updated.xp}`);
+  bot.sendMessage(chatId, `✅ Рівень користувача ${target.id} встановлено.\n🎖 Lvl <b>${stats.currentLevel}</b> · ${stats.currentRankTitle}\n⭐ XP: <b>${updated.xp}</b>`, { parse_mode: 'HTML' });
+});
+
+bot.onText(/\/ranks(?:@\w+)?/, (msg) => {
+  const chatId = msg.chat.id;
+  const user = msg.from;
+
+  if (!adminService.isAdminUser(user)) {
+    bot.sendMessage(chatId, config.messages.adminAccessDenied);
+    return;
+  }
+
+  const table = rankService.getRankTable(config, 12);
+  const lines = table.map((row) => `Lvl <b>${row.level}</b> · ${row.badge} ${row.title} — від <b>${row.minXp}</b> XP`);
+  bot.sendMessage(chatId, `🎖 <b>Таблиця рангів</b>\n\n${lines.join('\n')}\n\nФормула: XP = ${config.ranks?.base || 100} × (level − 1)²\n\nЗмінити поріг: /set_rank &lt;level&gt; &lt;min_xp&gt; [title]`, { parse_mode: 'HTML' });
+});
+
+bot.onText(/\/set_rank(?:@\w+)?\s+(\d+)\s+(\d+)(?:\s+(.+))?/, (msg, match) => {
+  const chatId = msg.chat.id;
+  const user = msg.from;
+
+  if (!adminService.isAdminUser(user)) {
+    bot.sendMessage(chatId, config.messages.adminAccessDenied);
+    return;
+  }
+
+  const level = Number(match[1]);
+  const minXp = Number(match[2]);
+  const title = match[3]?.trim();
+
+  if (!Number.isFinite(level) || level < 1 || !Number.isFinite(minXp) || minXp < 0) {
+    bot.sendMessage(chatId, 'Використання: /set_rank <level> <min_xp> [title]', { parse_mode: 'HTML' });
+    return;
+  }
+
+  rankService.updateRankThreshold(level, minXp, title);
+  adminService.logAction(user, 'set_rank', null, `level=${level}; minXp=${minXp}; title=${title || 'default'}`);
+  const rank = rankService.getRankTable(config, level).find((row) => row.level === level);
+  bot.sendMessage(
+    chatId,
+    `✅ Поріг оновлено.\nLvl <b>${level}</b> · ${rank?.badge || '🎖'} ${rank?.title || title || '—'} — від <b>${minXp}</b> XP`,
+    { parse_mode: 'HTML' }
+  );
+});
+
+bot.onText(/\/profile(?:@\w+)?/, async (msg) => {
+  const chatId = msg.chat.id;
+  const session = getSession(msg.from.id);
+  if (!session || session.step !== 'completed') {
+    await bot.sendMessage(chatId, 'Спочатку заверши реєстрацію через /start');
+    return;
+  }
+  showUserProfile(chatId, session, msg.from);
+});
+
+bot.onText(/\/me(?:@\w+)?/, async (msg) => {
+  const chatId = msg.chat.id;
+  const session = getSession(msg.from.id);
+  if (!session || session.step !== 'completed') {
+    await bot.sendMessage(chatId, 'Спочатку заверши реєстрацію через /start');
+    return;
+  }
+  showUserProfile(chatId, session, msg.from);
+});
+
+bot.onText(/\/top(?:@\w+)?/, (msg) => {
+  const chatId = msg.chat.id;
+  const session = getSession(msg.from.id);
+  if (!session) {
+    bot.sendMessage(chatId, 'Натисни /start, щоб почати.');
+    return;
+  }
+  showTopUsers(chatId);
 });
 
 bot.onText(/\/take_xp(?:@\w+)?\s+([^\s]+)(?:\s+(\d+))?/, (msg, match) => {
@@ -646,7 +787,8 @@ bot.onText(/\/take_xp(?:@\w+)?\s+([^\s]+)(?:\s+(\d+))?/, (msg, match) => {
   }
 
   adminService.logAction(user, 'take_xp', target.id, `amount=${amount}`);
-  bot.sendMessage(chatId, `✅ Списано ${amount} XP у користувача ${target.id}. Новий баланс: ${updated.xp}.`, { parse_mode: 'HTML' });
+  const stats = rankService.calculateLevel(updated.xp || 0, config);
+  bot.sendMessage(chatId, `✅ Списано ${amount} XP у користувача ${target.id}.\nНовий баланс: <b>${updated.xp} XP</b>\nРівень: <b>${stats.currentLevel}</b> (${stats.currentRankTitle})`, { parse_mode: 'HTML' });
 });
 
 bot.onText(/\/set_premium(?:@\w+)?\s+([^\s]+)\s+(\d+)/, (msg, match) => {
@@ -1308,7 +1450,7 @@ bot.on('message', async (msg) => {
     const purchaseResult = punishmentService.buyFreezeItem(session, config);
 
     if (purchaseResult.success) {
-      saveSession(userId, session);
+      saveSession(userId, session, { levelBefore: purchaseResult.levelBefore });
     }
 
     bot.sendMessage(chatId, purchaseResult.message, {
@@ -1338,7 +1480,7 @@ bot.on('message', async (msg) => {
 
   if (matchesMenuText(text, '👤 Мій профіль')) {
     userStates[chatId] = 'viewing_profile';
-    showUserProfile(chatId, session);
+    showUserProfile(chatId, session, msg.from);
     return;
   }
 
@@ -1441,6 +1583,10 @@ setInterval(() => {
 examScheduler.startExamScheduler(bot, config);
 
 async function startBot() {
+  userService.setLevelUpNotifier((userId, fromLevel, toLevel, session) => {
+    levelUpHandler.queueLevelUp(bot, userId, fromLevel, toLevel, session, config);
+  });
+
   await bot.deleteWebHook({ drop_pending_updates: true });
   await bot.startPolling({ restart: true });
 
@@ -1452,6 +1598,9 @@ async function startBot() {
     { command: 'premium', description: 'Статус Premium (фото та голос)' },
     { command: 'quests', description: 'Твої квести та прогрес' },
     { command: 'leaderboard', description: 'Топ-100 користувачів за XP' },
+    { command: 'profile', description: 'Твій профіль, ранг та прогрес' },
+    { command: 'me', description: 'Твій профіль (alias)' },
+    { command: 'top', description: 'Топ-10 за рівнем та XP' },
     { command: 'admin', description: 'Адмін-панель для модераторів' },
     { command: 'user', description: 'Переглянути картку користувача' },
     { command: 'give_xp', description: 'Нарахувати XP користувачу' },
@@ -1462,8 +1611,10 @@ async function startBot() {
     { command: 'global_chat', description: 'Глобальний чат з онлайн-користувачами' },
     { command: 'roulette', description: 'Рулетка XP — ставка та випадковий результат' },
     { command: 'daily_spin', description: 'Щоденна рулетка — безкоштовний оберт' },
+    { command: 'set_level', description: 'Встановити рівень користувача (адмін)' },
+    { command: 'ranks', description: 'Таблиця рангів (адмін)' },
+    { command: 'set_rank', description: 'Змінити поріг XP для рівня (адмін)' },
     { command: 'stats', description: 'Системна статистика для адмінів' },
-    { command: 'leaderboard', description: 'Топ-100 користувачів за XP' },
   ]);
 
   leaderboardService.createApiServer(Number(process.env.LEADERBOARD_PORT || 3001));

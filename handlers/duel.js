@@ -7,6 +7,7 @@ const {
 } = require('../services/duelScoring');
 const userService = require('../services/userService');
 const leaderboardService = require('../services/leaderboardService');
+const rankService = require('../services/rankService');
 const { getActionKeyboard, backKeyboard } = require('../keyboards');
 
 const OPTION_LABELS = ['А', 'Б', 'В', 'Г'];
@@ -286,9 +287,11 @@ function applyDuelResultToUser(userId, outcome, config) {
   }
   session.duelRating = applyRatingDelta(session.duelRating, outcome, config.duel.rating);
   const xpGain = outcome === 'win' ? config.duel.xpWin : outcome === 'draw' ? config.duel.xpDraw : config.duel.xpLoss;
-  session.xp = (session.xp || 0) + xpGain;
-  leaderboardService.recordXpChange(session, xpGain);
-  userService.saveSession(userId, session);
+  const xpResult = rankService.applyXpChange(session, xpGain, config);
+  if (xpGain > 0) {
+    leaderboardService.recordXpChange(session, xpGain);
+  }
+  userService.saveSession(userId, session, { levelBefore: xpResult.oldLevel });
 }
 
 async function showDuelMenu(bot, chatId, userId, session, config) {

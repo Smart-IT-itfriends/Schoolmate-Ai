@@ -41,18 +41,18 @@
     "username": "Max_Misiura",
     "startedAt": "2026-07-14T10:57:06.417Z",
     "completedAt": "2026-07-14T10:57:22.895Z",
-    "xp": 2000000000994763,
+    "xp": 999999999,
     "lastRewardClaimedDate": "2026-07-29T08:17:15.995Z",
     "dailyStreak": 2,
     "totalAiRequests": 13,
     "hasFreezeItem": true,
-    "lastActivityDate": "2026-07-29T09:38:16.884Z",
+    "lastActivityDate": "2026-07-29T09:52:40.875Z",
     "timezone": "Europe/Kyiv",
     "aiRequests": 1,
     "stats": {
       "topicsExplained": 3,
       "testsCompleted": 3,
-      "messagesCount": 158,
+      "messagesCount": 167,
       "duelsPlayed": 2,
       "duelsWon": 1
     },
@@ -64,7 +64,8 @@
       "lastWeeklyResetAt": "2026-07-26T21:00:00.000Z",
       "lastMonthlyResetAt": "2026-06-30T21:00:00.000Z"
     },
-    "lastDailySpinDate": "2026-07-29T09:33:53.011Z"
+    "lastDailySpinDate": "2026-07-29T09:33:53.011Z",
+    "level": 3163
   },
   "7664893170": {
     "step": "completed",

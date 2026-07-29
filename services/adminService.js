@@ -3,6 +3,7 @@ const path = require('path');
 const config = require('../config');
 const userService = require('./userService');
 const leaderboardService = require('./leaderboardService');
+const rankService = require('./rankService');
 
 const AUDIT_LOG_FILE = path.join(__dirname, '..', config.admin.auditLogFile || 'data/admin_audit.log');
 
@@ -59,6 +60,8 @@ function getUserCard(session, userId) {
     `<b>Клас:</b> ${session.class || 'Невідомо'}`,
     `<b>Предмет:</b> ${session.selectedSubject || 'Не обрано'}`,
     `<b>XP:</b> ${session.xp || 0}`,
+    `<b>Рівень:</b> ${session.level || rankService.calculateLevel(session.xp || 0, config).currentLevel}`,
+    `<b>Ранг:</b> ${rankService.calculateLevel(session.xp || 0, config).currentRankTitle}`,
     `<b>Premium:</b> ${isPremium(session) ? '⭐ Так' : 'Ні'}`,
     `<b>Заблоковано:</b> ${session.banned ? 'Так' : 'Ні'}`,
     `<b>Стрік:</b> ${session.dailyStreak || 0}`,
@@ -103,12 +106,21 @@ function logAction(actor, action, targetId, details = '') {
 function adjustXp(userId, amount) {
   const session = userService.getSession(userId);
   if (!session) return null;
-  session.xp = Number.isFinite(session.xp) ? session.xp + amount : amount;
-  if (session.xp < 0) session.xp = 0;
-  if (Number.isFinite(amount) && amount > 0) {
-    leaderboardService.recordXpChange(session, amount);
+
+  const xpResult = rankService.applyXpChange(session, Number(amount) || 0, config);
+  if (Number(amount) > 0) {
+    leaderboardService.recordXpChange(session, Number(amount));
   }
-  userService.saveSession(userId, session);
+  userService.saveSession(userId, session, { levelBefore: xpResult.oldLevel });
+  return session;
+}
+
+function setUserLevel(userId, level) {
+  const session = userService.getSession(userId);
+  if (!session) return null;
+
+  const result = rankService.setLevel(session, level, config);
+  userService.saveSession(userId, session, { levelBefore: result.oldLevel });
   return session;
 }
 
@@ -186,6 +198,7 @@ module.exports = {
   getUserCard,
   logAction,
   adjustXp,
+  setUserLevel,
   setPremiumDays,
   banUser,
   unbanUser,
