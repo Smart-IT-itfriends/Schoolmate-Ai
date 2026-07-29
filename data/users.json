@@ -1,4 +1,31 @@
 {
+  "532740269": {
+    "step": "completed",
+    "name": "Ігор",
+    "class": 11,
+    "selectedSubject": null,
+    "telegramId": 532740269,
+    "username": "igor_misiura",
+    "startedAt": "2026-07-29T09:18:23.114Z",
+    "completedAt": "2026-07-29T09:18:37.112Z",
+    "xp": 0,
+    "totalAiRequests": 0,
+    "dailyStreak": 0,
+    "lastRewardClaimedDate": null,
+    "hasFreezeItem": false,
+    "activeBuff": null,
+    "lastActivityDate": "2026-07-29T09:20:18.715Z",
+    "timezone": "Europe/Kyiv",
+    "rewardBuff": null,
+    "stats": {
+      "topicsExplained": 0,
+      "testsCompleted": 0,
+      "messagesCount": 7,
+      "duelsPlayed": 0,
+      "duelsWon": 0
+    },
+    "duelRating": 1000
+  },
   "8759683710": {
     "step": "completed",
     "name": "Максим",
@@ -13,13 +40,13 @@
     "dailyStreak": 2,
     "totalAiRequests": 13,
     "hasFreezeItem": true,
-    "lastActivityDate": "2026-07-29T09:09:55.972Z",
+    "lastActivityDate": "2026-07-29T09:20:13.382Z",
     "timezone": "Europe/Kyiv",
     "aiRequests": 1,
     "stats": {
       "topicsExplained": 3,
       "testsCompleted": 3,
-      "messagesCount": 132,
+      "messagesCount": 141,
       "duelsPlayed": 2,
       "duelsWon": 1
     },

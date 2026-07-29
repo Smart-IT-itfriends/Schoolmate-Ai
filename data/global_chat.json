@@ -1,0 +1,42 @@
+{
+  "messages": [
+    {
+      "id": "m_ms5vhltd9dd9",
+      "userId": "532740269",
+      "userName": "Ігор",
+      "userClass": 11,
+      "text": "Привіт",
+      "createdAt": "2026-07-29T09:18:55.921Z",
+      "deleted": false
+    },
+    {
+      "id": "m_ms5vi1b49959",
+      "userId": "8759683710",
+      "userName": "Максим",
+      "userClass": 5,
+      "text": "привіт",
+      "createdAt": "2026-07-29T09:19:16.000Z",
+      "deleted": false
+    },
+    {
+      "id": "m_ms5vina5b799",
+      "userId": "532740269",
+      "userName": "Ігор",
+      "userClass": 11,
+      "text": "Ідем пограємо в футбол",
+      "createdAt": "2026-07-29T09:19:44.477Z",
+      "deleted": false
+    },
+    {
+      "id": "m_ms5vj0o150a9",
+      "userId": "8759683710",
+      "userName": "Максим",
+      "userClass": 5,
+      "text": "давай",
+      "createdAt": "2026-07-29T09:20:01.825Z",
+      "deleted": false
+    }
+  ],
+  "mutes": [],
+  "reports": []
+}

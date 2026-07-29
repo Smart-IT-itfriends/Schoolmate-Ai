@@ -16,6 +16,9 @@ const mediaHandler = require('./handlers/media');
 const duelHandler = require('./handlers/duel');
 const questHandler = require('./handlers/quests');
 const supportHandler = require('./handlers/support');
+const globalChatHandler = require('./handlers/globalChat');
+const globalChatService = require('./services/globalChatService');
+const { createGlobalChatServer } = require('./services/globalChatRealtime');
 const examScheduler = require('./services/examScheduler');
 const premiumService = require('./services/premiumService');
 const leaderboardService = require('./services/leaderboardService');
@@ -793,11 +796,38 @@ bot.onText(/\/quests/, (msg) => {
   questHandler.showQuests(bot, chatId, userId);
 });
 
+bot.onText(/\/global_chat(?:@\w+)?/, async (msg) => {
+  const chatId = msg.chat.id;
+  const userId = msg.from.id;
+  const session = getSession(userId);
+  if (!session || session.step !== 'completed') {
+    await bot.sendMessage(chatId, 'Спочатку заверши реєстрацію через /start');
+    return;
+  }
+  await globalChatHandler.enterGlobalChat(bot, chatId, userId, session, msg.from, userStates, config);
+});
+
+bot.onText(/\/chat_mute(?:@\w+)?(?:\s+(.+))?/, async (msg) => {
+  await globalChatHandler.handleChatMuteCommand(bot, msg, config);
+});
+
+bot.onText(/\/chat_unmute(?:@\w+)?(?:\s+(.+))?/, async (msg) => {
+  await globalChatHandler.handleChatUnmuteCommand(bot, msg, config);
+});
+
+bot.onText(/\/chat_delete(?:@\w+)?(?:\s+(.+))?/, async (msg) => {
+  await globalChatHandler.handleChatDeleteCommand(bot, msg, config);
+});
+
 bot.on('callback_query', async (query) => {
   const session = getSession(query.from.id);
   const chatId = query.message?.chat?.id || query.from.id;
   const user = query.from;
   const data = String(query.data || '');
+
+  if (await globalChatHandler.handleGlobalChatCallback(bot, query, config)) {
+    return;
+  }
 
   if (data.startsWith('admin:')) {
     if (!adminService.isAdminUser(user)) {
@@ -1000,6 +1030,11 @@ bot.on('message', async (msg) => {
       return;
     }
 
+    if (userStates[chatId] === 'global_chat') {
+      bot.sendMessage(chatId, config.messages.globalChatTextOnly, globalChatHandler.globalChatKeyboard);
+      return;
+    }
+
     if (msg.photo && await supportHandler.handleSupportPhoto(bot, msg, session, userStates, config)) {
       userService.recordMessage(session);
       saveSession(userId, session);
@@ -1132,6 +1167,19 @@ bot.on('message', async (msg) => {
     return;
   }
 
+  if (globalChatHandler.isGlobalChatMenuText(text)) {
+    if (session.step !== 'completed') {
+      bot.sendMessage(chatId, 'Спочатку заверши реєстрацію через /start');
+      return;
+    }
+    await globalChatHandler.enterGlobalChat(bot, chatId, userId, session, msg.from, userStates, config);
+    return;
+  }
+
+  if (await globalChatHandler.handleGlobalChatMessage(bot, chatId, userId, text, session, msg.from, userStates, config)) {
+    return;
+  }
+
   if (duelHandler.handleDuelMessage(bot, chatId, userId, text, session, userStates, config)) {
     return;
   }
@@ -1144,6 +1192,7 @@ bot.on('message', async (msg) => {
     createTestHandler.clearQuizSession(chatId);
     duelHandler.clearUserDuelSearch(userId, chatId, userStates);
     supportHandler.clearSupportState(chatId, userId, userStates);
+    globalChatHandler.clearGlobalChatState(chatId, userId, userStates);
     showMainMenu(chatId, session);
     return;
   }
@@ -1280,6 +1329,7 @@ bot.on('message', async (msg) => {
     createTestHandler.clearQuizSession(chatId);
     duelHandler.clearUserDuelSearch(userId, chatId, userStates);
     supportHandler.clearSupportState(chatId, userId, userStates);
+    globalChatHandler.clearGlobalChatState(chatId, userId, userStates);
     if (session.examDraft) {
       delete session.examDraft;
       saveSession(userId, session);
@@ -1356,11 +1406,19 @@ async function startBot() {
     { command: 'set_premium', description: 'Надати або продовжити Premium' },
     { command: 'ban', description: 'Заблокувати користувача' },
     { command: 'unban', description: 'Розблокувати користувача' },
+    { command: 'global_chat', description: 'Глобальний чат з онлайн-користувачами' },
     { command: 'stats', description: 'Системна статистика для адмінів' },
     { command: 'leaderboard', description: 'Топ-100 користувачів за XP' },
   ]);
 
   leaderboardService.createApiServer(Number(process.env.LEADERBOARD_PORT || 3001));
+
+  globalChatService.init(config);
+  globalChatService.setBroadcastHandler((message, senderUserId) => {
+    globalChatHandler.broadcastToOnline(bot, message, senderUserId, config);
+  });
+  createGlobalChatServer(config, Number(process.env.GLOBAL_CHAT_PORT || config.globalChat.port || 3002));
+
   console.log('🤖 Schoolmate AI Bot запущений і готовий до роботи...');
 }
 
