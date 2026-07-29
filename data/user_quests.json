@@ -29,7 +29,7 @@
         "completedAt": null
       },
       "topic_explorer": {
-        "currentProgress": 0,
+        "currentProgress": 1,
         "isCompleted": false,
         "completedAt": null
       },
@@ -39,7 +39,7 @@
         "completedAt": null
       },
       "daily_hero": {
-        "currentProgress": 1,
+        "currentProgress": 2,
         "isCompleted": false,
         "completedAt": null
       }

@@ -3,6 +3,7 @@ const http = require('http');
 const { getActionKeyboard, backKeyboard } = require('../keyboards');
 const { askAI, AIServiceError } = require('../services/aiService');
 const userService = require('../services/userService');
+const leaderboardService = require('../services/leaderboardService');
 const questHandler = require('./quests');
 
 const OPTION_LABELS = ['А', 'Б', 'В', 'Г', 'Д', 'Е'];
@@ -259,6 +260,7 @@ async function finishQuiz(bot, chatId, userId, session, userStates, config, save
   const earnedXp = doubleXp ? baseXp * 2 : baseXp;
 
   session.xp = (session.xp || 0) + earnedXp;
+  leaderboardService.recordXpChange(session, earnedXp);
   userService.recordTestCompleted(session);
 
   if (doubleXp && earnedXp > 0) {

@@ -165,6 +165,7 @@ function triggerQuestProgress(userId, targetType, session) {
 
       if (session) {
         session.xp = (session.xp || 0) + quest.rewardPoints;
+        leaderboardService.recordXpChange(session, quest.rewardPoints);
       }
 
       completions.push({

@@ -17,6 +17,8 @@ const duelHandler = require('./handlers/duel');
 const questHandler = require('./handlers/quests');
 const examScheduler = require('./services/examScheduler');
 const premiumService = require('./services/premiumService');
+const leaderboardService = require('./services/leaderboardService');
+const { matchesMenuText } = require('./services/menuText');
 const token = process.env.TELEGRAM_TOKEN || process.env.BOT_TOKEN;
 
 if (!token) {
@@ -376,6 +378,81 @@ function showLearningStats(chatId, session) {
   });
 }
 
+function buildLeaderboardKeyboard(period, page, pageCount) {
+  const rows = [
+    [
+      { text: 'За весь час', callback_data: `leaderboard:period:all_time:1` },
+      { text: 'За тиждень', callback_data: `leaderboard:period:weekly:1` },
+      { text: 'За місяць', callback_data: `leaderboard:period:monthly:1` },
+    ],
+  ];
+
+  if (pageCount > 1) {
+    const navRow = [];
+    if (page > 1) {
+      navRow.push({ text: '⬅️', callback_data: `leaderboard:page:${period}:${page - 1}` });
+    }
+    navRow.push({ text: `Сторінка ${page}/${pageCount}`, callback_data: `leaderboard:page:${period}:${page}` });
+    if (page < pageCount) {
+      navRow.push({ text: '➡️', callback_data: `leaderboard:page:${period}:${page + 1}` });
+    }
+    rows.push(navRow);
+  }
+
+  return { reply_markup: { inline_keyboard: rows } };
+}
+
+function formatLeaderboardName(entry) {
+  if (entry.username) {
+    return `@${entry.username}`;
+  }
+  if (entry.name) {
+    return escapeHtml(entry.name);
+  }
+  return `Користувач ${String(entry.userId).slice(-4).padStart(4, '0')}`;
+}
+
+function buildLeaderboardMessage(leaderboard, currentRank, period) {
+  const periodLabel = period === 'weekly' ? 'За тиждень' : period === 'monthly' ? 'За місяць' : 'За весь час';
+  const lines = [`🏆 <b>Лідерборд · ${periodLabel}</b>`, ''];
+
+  if (leaderboard.entries.length === 0) {
+    lines.push('Поки що немає даних для рейтингу.');
+  } else {
+    leaderboard.entries.forEach((entry, index) => {
+      const rank = (leaderboard.page - 1) * leaderboard.pageSize + index + 1;
+      const medal = rank === 1 ? '🥇 ' : rank === 2 ? '🥈 ' : rank === 3 ? '🥉 ' : '';
+      const userName = formatLeaderboardName(entry);
+      const selfMark = entry.userId === String(currentRank?.userId) ? ' <b>(Ти)</b>' : '';
+      lines.push(`${medal}<b>${rank}</b>. ${userName}${selfMark} — <b>${entry.score}</b> XP`);
+    });
+  }
+
+  lines.push('');
+
+  if (currentRank) {
+    lines.push(`Твоя позиція: <b>${currentRank.rank}</b> / ${currentRank.totalCount}`);
+    lines.push(`Твій результат: <b>${currentRank.score}</b> XP`);
+  } else {
+    lines.push('Твоя позиція: ще не в рейтингу. Продовжуй збирати XP!');
+  }
+
+  lines.push('');
+  lines.push('Перемикай періоди та переглядай Топ-100.');
+  return lines.join('\n');
+}
+
+async function showLeaderboard(chatId, userId, period = 'all_time', page = 1) {
+  const leaderboard = leaderboardService.getLeaderboard(period, page, 20);
+  const currentRank = leaderboardService.getUserRank(userId, period);
+  const message = buildLeaderboardMessage(leaderboard, currentRank, period);
+
+  await bot.sendMessage(chatId, message, {
+    parse_mode: 'HTML',
+    ...buildLeaderboardKeyboard(period, leaderboard.page, leaderboard.pageCount),
+  });
+}
+
 function isSubjectForUser(session, text) {
   if (!session || session.step !== 'completed') {
     return false;
@@ -689,6 +766,19 @@ bot.onText(/\/stats(?:@\w+)?/, (msg) => {
   });
 });
 
+bot.onText(/\/leaderboard(?:@\w+)?/, async (msg) => {
+  const chatId = msg.chat.id;
+  const userId = msg.from.id;
+  const session = getSession(userId);
+
+  if (!session || session.step !== 'completed') {
+    await bot.sendMessage(chatId, 'Натисни /start, щоб почати.');
+    return;
+  }
+
+  await showLeaderboard(chatId, userId, 'all_time', 1);
+});
+
 bot.onText(/\/quests/, (msg) => {
   const chatId = msg.chat.id;
   const userId = msg.from.id;
@@ -803,6 +893,19 @@ bot.on('callback_query', async (query) => {
       if (!updated) {
         await bot.sendMessage(chatId, config.messages.adminActionFailed);
       }
+      return;
+    }
+  }
+
+  if (data.startsWith('leaderboard:')) {
+    await bot.answerCallbackQuery(query.id);
+    const parts = data.split(':');
+    const action = parts[1];
+    const period = parts[2] || 'all_time';
+    const page = Number(parts[3] || 1);
+
+    if (action === 'period' || action === 'page') {
+      await showLeaderboard(chatId, query.from.id, period, page);
       return;
     }
   }
@@ -1051,25 +1154,25 @@ bot.on('message', async (msg) => {
     return;
   }
 
-  if (text === '📈 Мій прогрес') {
+  if (matchesMenuText(text, '📈 Мій прогрес')) {
     userStates[chatId] = 'viewing_progress';
     showUserProgress(chatId, session);
     return;
   }
 
-  if (text === '📊 Статистика') {
+  if (matchesMenuText(text, '📊 Статистика')) {
     userStates[chatId] = 'viewing_stats';
     showLearningStats(chatId, session);
     return;
   }
 
-  if (text === '🏆 Квести') {
+  if (matchesMenuText(text, '🏆 Квести')) {
     userStates[chatId] = 'viewing_quests';
     questHandler.showQuests(bot, chatId, userId);
     return;
   }
 
-  if (text === '🧊 Купити заморозку') {
+  if (matchesMenuText(text, '🧊 Купити заморозку')) {
     const purchaseResult = punishmentService.buyFreezeItem(session, config);
 
     if (purchaseResult.success) {
@@ -1101,18 +1204,24 @@ bot.on('message', async (msg) => {
     return;
   }
 
-  if (text === '👤 Мій профіль') {
+  if (matchesMenuText(text, '👤 Мій профіль')) {
     userStates[chatId] = 'viewing_profile';
     showUserProfile(chatId, session);
     return;
   }
 
-  if (text === '🎁 Забрати нагороду') {
+  if (matchesMenuText(text, '🏆 Лідерборд')) {
+    userStates[chatId] = 'viewing_leaderboard';
+    await showLeaderboard(chatId, userId, 'all_time', 1);
+    return;
+  }
+
+  if (matchesMenuText(text, '🎁 Забрати нагороду')) {
     handleDailyReward(chatId, userId, session);
     return;
   }
 
-  if (text === '⚙️ Допомога') {
+  if (matchesMenuText(text, '⚙️ Допомога')) {
     userStates[chatId] = 'viewing_help';
     bot.sendMessage(chatId, config.messages.help + (config.messages.helpQuest || ''), {
       parse_mode: 'HTML',
@@ -1124,13 +1233,13 @@ bot.on('message', async (msg) => {
     return;
   }
 
-  if (text === '⭐ Premium') {
+  if (matchesMenuText(text, '⭐ Premium')) {
     userStates[chatId] = 'viewing_premium';
     showPremiumInfo(chatId, userId, session);
     return;
   }
 
-  if (text === '⬅️ Повернутися в меню') {
+  if (matchesMenuText(text, '⬅️ Повернутися в меню')) {
     delete userStates[chatId];
     createTestHandler.clearQuizSession(chatId);
     duelHandler.clearUserDuelSearch(userId, chatId, userStates);
@@ -1202,6 +1311,7 @@ async function startBot() {
     { command: 'duel', description: 'Дуель знань — пошук, друг по ID або код' },
     { command: 'premium', description: 'Статус Premium (фото та голос)' },
     { command: 'quests', description: 'Твої квести та прогрес' },
+    { command: 'leaderboard', description: 'Топ-100 користувачів за XP' },
     { command: 'admin', description: 'Адмін-панель для модераторів' },
     { command: 'user', description: 'Переглянути картку користувача' },
     { command: 'give_xp', description: 'Нарахувати XP користувачу' },
@@ -1210,8 +1320,10 @@ async function startBot() {
     { command: 'ban', description: 'Заблокувати користувача' },
     { command: 'unban', description: 'Розблокувати користувача' },
     { command: 'stats', description: 'Системна статистика для адмінів' },
+    { command: 'leaderboard', description: 'Топ-100 користувачів за XP' },
   ]);
 
+  leaderboardService.createApiServer(Number(process.env.LEADERBOARD_PORT || 3001));
   console.log('🤖 Schoolmate AI Bot запущений і готовий до роботи...');
 }
 

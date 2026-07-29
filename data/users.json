@@ -3,28 +3,34 @@
     "step": "completed",
     "name": "Максим",
     "class": 5,
-    "selectedSubject": "Українська мова",
+    "selectedSubject": "Англійська мова",
     "telegramId": 8759683710,
     "username": "Max_Misiura",
     "startedAt": "2026-07-14T10:57:06.417Z",
     "completedAt": "2026-07-14T10:57:22.895Z",
-    "xp": 999999999995040,
-    "lastRewardClaimedDate": "2026-07-28T12:08:52.151Z",
-    "dailyStreak": 1,
-    "totalAiRequests": 10,
-    "hasFreezeItem": false,
-    "lastActivityDate": "2026-07-28T13:58:24.203Z",
+    "xp": 2000000000994995,
+    "lastRewardClaimedDate": "2026-07-29T08:17:15.995Z",
+    "dailyStreak": 2,
+    "totalAiRequests": 13,
+    "hasFreezeItem": true,
+    "lastActivityDate": "2026-07-29T08:17:54.226Z",
     "timezone": "Europe/Kyiv",
     "aiRequests": 1,
     "stats": {
-      "topicsExplained": 2,
-      "testsCompleted": 2,
-      "messagesCount": 75,
-      "duelsPlayed": 1,
-      "duelsWon": 0
+      "topicsExplained": 3,
+      "testsCompleted": 3,
+      "messagesCount": 124,
+      "duelsPlayed": 2,
+      "duelsWon": 1
     },
-    "duelRating": 995,
-    "premiumUntil": "2026-08-27T13:51:30.407Z"
+    "duelRating": 1010,
+    "premiumUntil": "2026-08-27T13:51:30.407Z",
+    "leaderboard": {
+      "weeklyXp": 1000025,
+      "monthlyXp": 1000025,
+      "lastWeeklyResetAt": "2026-07-26T21:00:00.000Z",
+      "lastMonthlyResetAt": "2026-06-30T21:00:00.000Z"
+    }
   },
   "7664893170": {
     "step": "completed",
@@ -49,6 +55,12 @@
       "testsCompleted": 0,
       "messagesCount": 31
     },
-    "buffExpiresAt": "2026-07-24T11:58:52.692Z"
+    "buffExpiresAt": "2026-07-24T11:58:52.692Z",
+    "leaderboard": {
+      "weeklyXp": 0,
+      "monthlyXp": 0,
+      "lastWeeklyResetAt": "2026-07-26T21:00:00.000Z",
+      "lastMonthlyResetAt": "2026-06-30T21:00:00.000Z"
+    }
   }
 }

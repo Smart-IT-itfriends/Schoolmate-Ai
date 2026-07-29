@@ -171,6 +171,178 @@
       "finishedAt": "2026-07-24T17:27:30.729Z",
       "winnerId": "ai",
       "result": "win_b"
+    },
+    {
+      "id": "dms5srf08106e",
+      "player1Id": "8759683710",
+      "player2Id": "ai",
+      "player1ChatId": 8759683710,
+      "player2ChatId": 8759683710,
+      "player1Name": "Максим",
+      "player2Name": "ШІ-суперник",
+      "status": "finished",
+      "currentQuestion": 4,
+      "scores": {
+        "8759683710": 644,
+        "ai": 515
+      },
+      "answers": {
+        "0": {
+          "messageIds": {
+            "8759683710": 1177
+          },
+          "ai": {
+            "optionIndex": 0,
+            "answeredAt": "2026-07-29T08:02:46.654Z",
+            "elapsedMs": 10271,
+            "isCorrect": true,
+            "points": 124
+          },
+          "8759683710": {
+            "optionIndex": 0,
+            "answeredAt": "2026-07-29T08:02:48.706Z",
+            "elapsedMs": 12323,
+            "isCorrect": true,
+            "points": 119
+          }
+        },
+        "1": {
+          "messageIds": {
+            "8759683710": 1180
+          },
+          "8759683710": {
+            "optionIndex": 1,
+            "answeredAt": "2026-07-29T08:02:56.890Z",
+            "elapsedMs": 7809,
+            "isCorrect": true,
+            "points": 130
+          },
+          "ai": {
+            "optionIndex": 1,
+            "answeredAt": "2026-07-29T08:02:59.074Z",
+            "elapsedMs": 9993,
+            "isCorrect": true,
+            "points": 125
+          }
+        },
+        "2": {
+          "messageIds": {
+            "8759683710": 1183
+          },
+          "ai": {
+            "optionIndex": 0,
+            "answeredAt": "2026-07-29T08:03:04.616Z",
+            "elapsedMs": 5383,
+            "isCorrect": false,
+            "points": 0
+          },
+          "8759683710": {
+            "optionIndex": 1,
+            "answeredAt": "2026-07-29T08:03:05.821Z",
+            "elapsedMs": 6588,
+            "isCorrect": true,
+            "points": 134
+          }
+        },
+        "3": {
+          "messageIds": {
+            "8759683710": 1186
+          },
+          "8759683710": {
+            "optionIndex": 2,
+            "answeredAt": "2026-07-29T08:03:13.088Z",
+            "elapsedMs": 7010,
+            "isCorrect": true,
+            "points": 132
+          },
+          "ai": {
+            "optionIndex": 2,
+            "answeredAt": "2026-07-29T08:03:15.906Z",
+            "elapsedMs": 9828,
+            "isCorrect": true,
+            "points": 125
+          }
+        },
+        "4": {
+          "messageIds": {
+            "8759683710": 1189
+          },
+          "ai": {
+            "optionIndex": 3,
+            "answeredAt": "2026-07-29T08:03:19.555Z",
+            "elapsedMs": 3414,
+            "isCorrect": true,
+            "points": 141
+          },
+          "8759683710": {
+            "optionIndex": 3,
+            "answeredAt": "2026-07-29T08:03:24.369Z",
+            "elapsedMs": 8228,
+            "isCorrect": true,
+            "points": 129
+          }
+        }
+      },
+      "questions": [
+        {
+          "question": "Choose the correct form: She ___ a student.",
+          "options": [
+            "is",
+            "are",
+            "am",
+            "be"
+          ],
+          "correctIndex": 0
+        },
+        {
+          "question": "Which word is an animal?",
+          "options": [
+            "table",
+            "rabbit",
+            "apple",
+            "pencil"
+          ],
+          "correctIndex": 1
+        },
+        {
+          "question": "Complete the sentence: I have ___ apple.",
+          "options": [
+            "a",
+            "an",
+            "the",
+            "some"
+          ],
+          "correctIndex": 1
+        },
+        {
+          "question": "What is the plural of 'child'?",
+          "options": [
+            "childs",
+            "childrens",
+            "children",
+            "childes"
+          ],
+          "correctIndex": 2
+        },
+        {
+          "question": "Which of these is a summer month?",
+          "options": [
+            "January",
+            "March",
+            "December",
+            "July"
+          ],
+          "correctIndex": 3
+        }
+      ],
+      "questionStartedAt": "2026-07-29T08:03:16.141Z",
+      "class": 5,
+      "subject": "Англійська мова",
+      "vsAi": true,
+      "createdAt": "2026-07-29T08:02:34.809Z",
+      "finishedAt": "2026-07-29T08:03:24.490Z",
+      "winnerId": "8759683710",
+      "result": "win_a"
     }
   ],
   "matchmakingPool": [],
