@@ -15,6 +15,7 @@ function startRegistration(bot, chatId, user, isReregister = false) {
     totalAiRequests: previousSession?.totalAiRequests || 0,
     dailyStreak: previousSession?.dailyStreak || 0,
     lastRewardClaimedDate: previousSession?.lastRewardClaimedDate || null,
+    lastDailySpinDate: previousSession?.lastDailySpinDate || null,
     hasFreezeItem: previousSession?.hasFreezeItem || false,
     activeBuff: previousSession?.activeBuff || null,
     lastActivityDate: new Date().toISOString(),

@@ -18,6 +18,7 @@ const questHandler = require('./handlers/quests');
 const supportHandler = require('./handlers/support');
 const globalChatHandler = require('./handlers/globalChat');
 const rouletteHandler = require('./handlers/roulette');
+const dailySpinHandler = require('./handlers/dailySpin');
 const globalChatService = require('./services/globalChatService');
 const { createGlobalChatServer } = require('./services/globalChatRealtime');
 const examScheduler = require('./services/examScheduler');
@@ -797,6 +798,17 @@ bot.onText(/\/quests/, (msg) => {
   questHandler.showQuests(bot, chatId, userId);
 });
 
+bot.onText(/\/daily_spin(?:@\w+)?/, async (msg) => {
+  const chatId = msg.chat.id;
+  const userId = msg.from.id;
+  const session = getSession(userId);
+  if (!session) {
+    await bot.sendMessage(chatId, 'Натисни /start, щоб почати.');
+    return;
+  }
+  await dailySpinHandler.handleDailySpin(bot, chatId, userId, session, config, saveSession);
+});
+
 bot.onText(/\/roulette(?:@\w+)?/, async (msg) => {
   const chatId = msg.chat.id;
   const userId = msg.from.id;
@@ -1341,6 +1353,11 @@ bot.on('message', async (msg) => {
     return;
   }
 
+  if (dailySpinHandler.isDailySpinMenuText(text)) {
+    await dailySpinHandler.handleDailySpin(bot, chatId, userId, session, config, saveSession);
+    return;
+  }
+
   if (matchesMenuText(text, '⚙️ Допомога')) {
     userStates[chatId] = 'viewing_help';
     bot.sendMessage(chatId, config.messages.help + (config.messages.helpQuest || ''), {
@@ -1444,6 +1461,7 @@ async function startBot() {
     { command: 'unban', description: 'Розблокувати користувача' },
     { command: 'global_chat', description: 'Глобальний чат з онлайн-користувачами' },
     { command: 'roulette', description: 'Рулетка XP — ставка та випадковий результат' },
+    { command: 'daily_spin', description: 'Щоденна рулетка — безкоштовний оберт' },
     { command: 'stats', description: 'Системна статистика для адмінів' },
     { command: 'leaderboard', description: 'Топ-100 користувачів за XP' },
   ]);
