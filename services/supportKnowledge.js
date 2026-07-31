@@ -103,7 +103,7 @@ function buildBotKnowledge(config) {
     '• Кнопка «🎰 Рулетка XP» або команда /roulette.',
     '• Користувач ставить свій XP і обирає колір: 🔴 червоне або ⚫ чорне.',
     '• Європейська рулетка (0–36); 🟢 зеро (0) — програш обох кольорів.',
-    `• ✅ Виграш: +${roulette.winProfitPercent ?? 1.5}% від ставки (мінімум +1 XP).`,
+    `• ✅ Виграш: ставка × x${roulette.winMultiplier ?? roulette.winProfitPercent ?? 1.5} (мінімум +1 XP).`,
     '• ❌ Програш: втрачається вся ставка.',
     `• Мін. ставка: ${roulette.minBet || 5} XP · Макс.: ${roulette.maxBet || 5000} XP.`,
     `• Швидкі ставки: ${(roulette.presetBets || [10, 25, 50, 100, 250, 500]).join(', ')} XP або своя сума.`,

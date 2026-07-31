@@ -83,6 +83,30 @@
       "notified2d": false,
       "notified1d": false,
       "notified2h": false
+    },
+    {
+      "id": "ca685ac9ac18",
+      "userId": "1944778928",
+      "chatId": 1944778928,
+      "title": "КР з матеши",
+      "scheduledAt": "2026-08-31T07:00:00.000Z",
+      "timezone": "Europe/Kyiv",
+      "createdAt": "2026-07-31T10:27:44.838Z",
+      "notified2d": false,
+      "notified1d": false,
+      "notified2h": false
+    },
+    {
+      "id": "aa98e9a731ee",
+      "userId": "1944778928",
+      "chatId": 1944778928,
+      "title": "кр",
+      "scheduledAt": "2026-08-24T08:00:00.000Z",
+      "timezone": "Europe/Kyiv",
+      "createdAt": "2026-07-31T10:28:38.076Z",
+      "notified2d": false,
+      "notified1d": false,
+      "notified2h": false
     }
   ]
 }

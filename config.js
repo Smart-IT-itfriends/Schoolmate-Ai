@@ -64,7 +64,7 @@ module.exports = {
   roulette: {
     minBet: 5,
     maxBet: 5000,
-    winProfitPercent: 1.5,
+    winMultiplier: 1.5,
     presetBets: [10, 25, 50, 100, 250, 500],
   },
 

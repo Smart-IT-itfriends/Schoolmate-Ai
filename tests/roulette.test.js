@@ -6,7 +6,7 @@ const config = {
   roulette: {
     minBet: 10,
     maxBet: 1000,
-    winProfitPercent: 1.5,
+    winMultiplier: 1.5,
   },
 };
 
@@ -17,14 +17,15 @@ test('validateBet checks balance and limits', () => {
   assert.equal(validateBet(2000, { xp: 5000 }, config).ok, false);
 });
 
-test('resolveSpin win adds configured profit percent', () => {
+test('resolveSpin win multiplies bet by configured multiplier', () => {
   const originalRandom = Math.random;
   Math.random = () => 0.01;
   try {
     const result = resolveSpin(100, 'red', config);
     if (result.won) {
-      assert.equal(result.profit, Math.max(1, Math.floor(100 * 0.015)));
+      assert.equal(result.profit, Math.max(1, Math.floor(100 * 1.5)));
       assert.equal(result.netChange, result.profit);
+      assert.equal(result.payout, 100 + result.profit);
     } else {
       assert.equal(result.netChange, -100);
       assert.equal(result.payout, 0);

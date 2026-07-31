@@ -40,12 +40,12 @@ function spinWheel() {
 
 function resolveSpin(bet, chosenColor, config) {
   const settings = getConfig(config);
-  const winProfitPercent = Number(settings.winProfitPercent ?? 1.5);
+  const winMultiplier = Number(settings.winMultiplier ?? settings.winProfitPercent ?? 1.5);
   const wheel = spinWheel();
   const won = wheel.color === chosenColor;
 
   if (won) {
-    const profit = Math.max(1, Math.floor(bet * (winProfitPercent / 100)));
+    const profit = Math.max(1, Math.floor(bet * winMultiplier));
     return {
       won: true,
       wheel,

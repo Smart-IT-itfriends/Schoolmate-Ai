@@ -32,6 +32,41 @@
       "lastMonthlyResetAt": "2026-06-30T21:00:00.000Z"
     }
   },
+  "1944778928": {
+    "step": "completed",
+    "name": "Назар",
+    "class": 8,
+    "selectedSubject": "Англійська мова",
+    "telegramId": 1944778928,
+    "username": "itiredbro",
+    "startedAt": "2026-07-31T10:21:00.791Z",
+    "completedAt": "2026-07-31T10:21:13.742Z",
+    "xp": 0,
+    "level": 1,
+    "totalAiRequests": 5,
+    "dailyStreak": 1,
+    "lastRewardClaimedDate": "2026-07-31T10:33:54.918Z",
+    "lastDailySpinDate": "2026-07-31T10:22:33.239Z",
+    "hasFreezeItem": false,
+    "activeBuff": null,
+    "lastActivityDate": "2026-07-31T10:35:01.541Z",
+    "timezone": "Europe/Kyiv",
+    "rewardBuff": null,
+    "stats": {
+      "topicsExplained": 5,
+      "testsCompleted": 0,
+      "messagesCount": 49,
+      "duelsPlayed": 0,
+      "duelsWon": 0
+    },
+    "duelRating": 1000,
+    "leaderboard": {
+      "weeklyXp": 227,
+      "monthlyXp": 227,
+      "lastWeeklyResetAt": "2026-07-26T21:00:00.000Z",
+      "lastMonthlyResetAt": "2026-06-30T21:00:00.000Z"
+    }
+  },
   "8759683710": {
     "step": "completed",
     "name": "Максим",

@@ -63,7 +63,7 @@ function buildAfterSpinKeyboard() {
 
 function showRouletteMenu(bot, chatId, session, config) {
   const settings = getSettings(config);
-  const profit = settings.winProfitPercent ?? 1.5;
+  const multiplier = settings.winMultiplier ?? settings.winProfitPercent ?? 1.5;
   const balance = session.xp || 0;
 
   const text = [
@@ -74,7 +74,7 @@ function showRouletteMenu(bot, chatId, session, config) {
     '<b>Правила:</b>',
     `• Обери ставку в XP`,
     `• Обери колір: 🔴 червоне або ⚫ чорне`,
-    `• ✅ Виграш: <b>+${profit}%</b> від ставки`,
+    `• ✅ Виграш: ставка × <b>x${multiplier}</b>`,
     `• ❌ Програш: втрачаєш <b>всю ставку</b>`,
     `• 🟢 Випаде 0 — програш обох кольорів`,
     '',
@@ -138,7 +138,8 @@ async function performSpin(bot, chatId, userId, session, bet, color, config, sav
 
   const wheelLabel = rouletteService.colorLabel(result.wheel.color);
   const chosenLabel = rouletteService.colorLabel(color);
-  const profitPercent = getSettings(config).winProfitPercent ?? 1.5;
+  const settings = getSettings(config);
+  const multiplier = settings.winMultiplier ?? settings.winProfitPercent ?? 1.5;
 
   let outcomeText;
   if (result.won) {
@@ -148,7 +149,7 @@ async function performSpin(bot, chatId, userId, session, bet, color, config, sav
       `Колесо: <b>${result.wheel.pocket}</b> · ${wheelLabel}`,
       `Твій вибір: ${chosenLabel}`,
       `Ставка: <b>${validation.bet} XP</b>`,
-      `Бонус (+${profitPercent}%): <b>+${result.profit} XP</b>`,
+      `Виграш (x${multiplier}): <b>+${result.profit} XP</b>`,
       `Новий баланс: <b>${session.xp} XP</b>`,
     ].join('\n');
   } else {
