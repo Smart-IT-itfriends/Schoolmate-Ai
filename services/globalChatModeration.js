@@ -94,16 +94,26 @@ function unmuteUser(userId) {
 
 function addReport(messageId, reporterId, reason) {
   const store = loadStore();
+  const message = store.messages.find((item) => item.id === messageId);
   const report = {
     id: `r_${Date.now().toString(36)}`,
     messageId,
     reporterId: String(reporterId),
     reason: reason || 'report',
+    reportedUserId: message?.userId || null,
+    reportedUserName: message?.userName || null,
+    reportedUserClass: message?.userClass || null,
+    reportedText: message?.text || null,
+    reportedCreatedAt: message?.createdAt || null,
     createdAt: new Date().toISOString(),
   };
   store.reports.push(report);
   saveStore(store);
   return report;
+}
+
+function getReports() {
+  return loadStore().reports;
 }
 
 module.exports = {
@@ -115,6 +125,7 @@ module.exports = {
   muteUser,
   unmuteUser,
   addReport,
+  getReports,
   generateMessageId,
   normalizeText,
 };

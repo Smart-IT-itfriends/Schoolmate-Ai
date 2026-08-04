@@ -35,6 +35,87 @@
       "text": "давай",
       "createdAt": "2026-07-29T09:20:01.825Z",
       "deleted": false
+    },
+    {
+      "id": "m_msem8q8o81d2",
+      "userId": "8759683710",
+      "userName": "Максим",
+      "userClass": 5,
+      "text": "добрий день",
+      "createdAt": "2026-08-04T12:10:00.792Z",
+      "deleted": false
+    },
+    {
+      "id": "m_msema8gf8aa1",
+      "userId": "7664893170",
+      "userName": "Рейм",
+      "userClass": 11,
+      "text": "Ребзі, а давайте в покер",
+      "createdAt": "2026-08-04T12:11:11.055Z",
+      "deleted": false
+    },
+    {
+      "id": "m_msemao2laaf8",
+      "userId": "8759683710",
+      "userName": "Максим",
+      "userClass": 5,
+      "text": "а давай не",
+      "createdAt": "2026-08-04T12:11:31.294Z",
+      "deleted": false
+    },
+    {
+      "id": "m_msemar6ob7f8",
+      "userId": "403570481",
+      "userName": "Марк",
+      "userClass": 11,
+      "text": "Привіт всім\\!",
+      "createdAt": "2026-08-04T12:11:35.328Z",
+      "deleted": false
+    },
+    {
+      "id": "m_msemax5x8896",
+      "userId": "8759683710",
+      "userName": "Максим",
+      "userClass": 5,
+      "text": "привіт",
+      "createdAt": "2026-08-04T12:11:43.077Z",
+      "deleted": false
+    },
+    {
+      "id": "m_msemaztjeed6",
+      "userId": "7664893170",
+      "userName": "Рейм",
+      "userClass": 11,
+      "text": "Доброго і Вам дня(",
+      "createdAt": "2026-08-04T12:11:46.519Z",
+      "deleted": false
+    },
+    {
+      "id": "m_msembqiecc24",
+      "userId": "8759683710",
+      "userName": "Максим",
+      "userClass": 5,
+      "text": "хто в дуєль знань скиньте ІD",
+      "createdAt": "2026-08-04T12:12:21.110Z",
+      "deleted": false
+    },
+    {
+      "id": "m_msemdfpta116",
+      "userId": "7664893170",
+      "userName": "Рейм",
+      "userClass": 11,
+      "text": "@Reim2444",
+      "createdAt": "2026-08-04T12:13:40.433Z",
+      "deleted": false
+    },
+    {
+      "id": "m_msen2e4j5d97",
+      "userId": "8759683710",
+      "userName": "Максим",
+      "userClass": 5,
+      "text": "привіт",
+      "createdAt": "2026-08-04T12:33:04.771Z",
+      "deleted": false
     }
   ],
   "mutes": [],

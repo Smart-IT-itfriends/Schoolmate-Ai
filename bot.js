@@ -10,6 +10,7 @@ const adminService = require('./services/adminService');
 const keyboards = require('./keyboards');
 const registration = require('./handlers/registration');
 const explainHandler = require('./handlers/explain');
+const cheatsheetHandler = require('./handlers/cheatsheet');
 const examHandler = require('./handlers/exams');
 const createTestHandler = require('./handlers/createTest');
 const mediaHandler = require('./handlers/media');
@@ -130,6 +131,65 @@ function getSubjectHint(session) {
     : '';
 }
 
+function escapeHtml(text) {
+  return String(text)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function ensureCheatsheets(session) {
+  if (!Array.isArray(session.cheatsheets)) {
+    session.cheatsheets = [];
+  }
+  return session.cheatsheets;
+}
+
+function getCheatsheetCost() {
+  return Number(config.cheatsheet?.cost || 500);
+}
+
+function showUserCheatsheets(chatId, session) {
+  ensureCheatsheets(session);
+  const cost = getCheatsheetCost();
+
+  if (session.cheatsheets.length === 0) {
+    bot.sendMessage(chatId, config.messages.cheatsheetListEmpty.replace('{cost}', cost), {
+      parse_mode: 'HTML',
+      ...backKeyboard,
+    });
+    return;
+  }
+
+  const list = session.cheatsheets
+    .slice()
+    .reverse()
+    .map((item, index) => {
+      const subject = item.subject ? ` (${escapeHtml(item.subject)})` : '';
+      return `${index + 1}. <b>${escapeHtml(item.topic)}</b>${subject} — ${formatDate(item.createdAt)}`;
+    })
+    .join('\n');
+
+  const message = config.messages.cheatsheetListTitle.replace('{content}', list);
+
+  bot.sendMessage(chatId, message, {
+    parse_mode: 'HTML',
+    ...backKeyboard,
+  });
+}
+
+function addCheatsheet(session, topic, content) {
+  ensureCheatsheets(session);
+  session.cheatsheets.push({
+    id: Date.now().toString(),
+    topic,
+    subject: session.selectedSubject || null,
+    createdAt: new Date().toISOString(),
+    content,
+  });
+}
+
 function getTodayDateString() {
   return new Date().toISOString().slice(0, 10);
 }
@@ -173,6 +233,7 @@ function buildProfileMessage(session, user) {
     `🏫 <b>Клас:</b> ${session.class || 'Невідомо'}`,
     `📚 <b>Предмет:</b> ${subjectText}`,
     `⭐ <b>Premium:</b> ${premiumLabel}`,
+    `📄 <b>Шпаргалок:</b> ${session.cheatsheets?.length || 0}`,
     `⚔️ <b>Рейтинг дуелей:</b> ${session.duelRating || 1000}`,
     `👥 <b>Запрошено друзів:</b> ${session.referralsCount || 0}`,
     `📅 <b>Дата реєстрації:</b> ${registeredLabel}`,
@@ -273,7 +334,7 @@ function showPremiumInfo(chatId, userId, session) {
   const products = premiumService.getProducts();
   const inlineKeyboard = products.map((p) => [
     {
-      text: `${p.label} — ${p.cost} XP`,
+      text: p.donation ? p.label : `${p.label} — ${p.cost} XP`,
       callback_data: `premium:show_buy:${p.id}`,
     },
   ]);
@@ -426,7 +487,8 @@ function showLearningStats(chatId, session) {
     `🧠 Тестів пройдено: <b>${stats.testsCompleted}</b>`,
     `⚔️ Дуелей зіграно: <b>${stats.duelsPlayed || 0}</b>`,
     `🏆 Дуелей виграно: <b>${stats.duelsWon || 0}</b>`,
-    `📈 Рейтинг дуелей: <b>${session.duelRating || 1000}</b>`,
+    `� Шпаргалок створено: <b>${stats.cheatsheetsCreated || 0}</b>`,
+    `�📈 Рейтинг дуелей: <b>${session.duelRating || 1000}</b>`,
     `💬 Повідомлень боту: <b>${stats.messagesCount}</b>`,
   ].join('\n');
 
@@ -1188,22 +1250,46 @@ bot.on('callback_query', async (query) => {
           return;
         }
 
+        const confirmText = product.donation
+          ? `Щоб купити ${product.label}, перейдіть за посиланням нижче та зробіть донат:
+${config.premium.donationUrl}
+
+Після оплати збережіть свій ID <code>${query.from.id}</code> та напишіть адміністратору для активації.`
+          : `Ви впевнені, що хочете витратити ${product.cost} XP на ${product.label}?`;
+
         const confirmKeyboard = {
           reply_markup: {
             inline_keyboard: [
               [
-                { text: `Підтвердити — витратити ${product.cost} XP`, callback_data: `premium:confirm:${product.id}` },
+                { text: product.donation ? 'Отримати інструкції' : `Підтвердити — витратити ${product.cost} XP`, callback_data: `premium:confirm:${product.id}` },
                 { text: 'Скасувати', callback_data: 'premium:cancel' },
               ],
             ],
           },
         };
 
-        await bot.sendMessage(query.message.chat.id, `Ви впевнені, що хочете витратити ${product.cost} XP на ${product.label}?`, confirmKeyboard);
+        await bot.sendMessage(query.message.chat.id, confirmText, confirmKeyboard);
         return;
       }
 
       if (action === 'confirm' && productId) {
+        const products = premiumService.getProducts();
+        const product = products.find((p) => p.id === productId);
+        if (!product) {
+          await bot.sendMessage(query.message.chat.id, '❌ Товар не знайдено.');
+          return;
+        }
+
+        if (product.donation) {
+          await bot.sendMessage(query.message.chat.id, `⭐ Premium за донат
+
+Перейдіть за посиланням:
+${config.premium.donationUrl}
+
+Після оплати напишіть адміністратору з вашим ID <code>${query.from.id}</code> для активації Premium.`, { parse_mode: 'HTML' });
+          return;
+        }
+
         const result = await premiumService.purchaseProduct(query.from.id, productId);
 
         if (!result || !result.success) {
@@ -1540,6 +1626,17 @@ bot.on('message', async (msg) => {
     return;
   }
 
+  if (text === '📄 Шпаргалка') {
+    createTestHandler.clearQuizSession(chatId);
+    askForTopic(chatId, session, 'cheatsheet_topic', config.messages.cheatsheetAskTopic.replace('{cost}', getCheatsheetCost()));
+    return;
+  }
+
+  if (text === '📂 Мої шпаргалки') {
+    showUserCheatsheets(chatId, session);
+    return;
+  }
+
   if (text === '🧠 Створити тест') {
     createTestHandler.startCreateTest(bot, chatId, session, userStates, config);
     return;
@@ -1668,6 +1765,47 @@ bot.on('message', async (msg) => {
     saveSession(userId, session);
     explainHandler.handleExplainTopic(bot, chatId, text, session);
     questHandler.applyQuestTrigger(bot, chatId, userId, 'explain_topic', session, saveSession);
+    return;
+  }
+
+  if (userStates[chatId] === 'cheatsheet_topic') {
+    const cost = getCheatsheetCost();
+    if ((session.xp || 0) < cost) {
+      bot.sendMessage(chatId, config.messages.cheatsheetInsufficientXp.replace('{cost}', cost), {
+        parse_mode: 'HTML',
+        ...getActionKeyboard(session),
+      });
+      return;
+    }
+
+    try {
+      bot.sendMessage(chatId, '⏳ Готую шпаргалку...', { parse_mode: 'HTML' });
+      const topicText = text;
+      const cheatsheetContent = await cheatsheetHandler.handleCheatsheetTopic(topicText, session);
+      const oldLevel = session.level || rankService.calculateLevel(session.xp || 0, config).currentLevel;
+      rankService.applyXpChange(session, -cost, config);
+      userService.recordCheatsheetCreated(session);
+      addCheatsheet(session, topicText, cheatsheetContent);
+      saveSession(userId, session, { levelBefore: oldLevel });
+      userStates[chatId] = 'subject_selected';
+
+      const subject = session.selectedSubject ? ` (${escapeHtml(session.selectedSubject)})` : '';
+      await bot.sendMessage(
+        chatId,
+        `📄 <b>Шпаргалка${subject}: ${escapeHtml(topicText)}</b>\n\n${escapeHtml(cheatsheetContent)}`,
+        {
+          parse_mode: 'HTML',
+          ...getActionKeyboard(session),
+        }
+      );
+    } catch (error) {
+      userStates[chatId] = 'subject_selected';
+      console.error('Cheatsheet creation error:', error);
+      bot.sendMessage(chatId, 'Не вдалося створити шпаргалку. Спробуй пізніше.', {
+        parse_mode: 'HTML',
+        ...getActionKeyboard(session),
+      });
+    }
     return;
   }
 

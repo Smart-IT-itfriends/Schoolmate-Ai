@@ -11,6 +11,7 @@ const {
   muteUser,
   unmuteUser,
   addReport,
+  getReports,
   generateMessageId,
 } = require('./globalChatModeration');
 const { createSlowModeLimiter } = require('./globalChatRateLimiter');
@@ -234,6 +235,7 @@ module.exports = {
   unmuteUser,
   isUserMuted,
   addReport,
+  getReports,
   recordDelivery,
   getDeliveries,
   clearDeliveries,

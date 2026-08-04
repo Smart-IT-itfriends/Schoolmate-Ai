@@ -57,6 +57,7 @@ function saveUsers(users) {
 function getDefaultStats() {
   return {
     topicsExplained: 0,
+    cheatsheetsCreated: 0,
     testsCompleted: 0,
     messagesCount: 0,
     duelsPlayed: 0,
@@ -73,6 +74,7 @@ function ensureStats(session) {
     session.stats = getDefaultStats();
   } else {
     session.stats.topicsExplained = session.stats.topicsExplained || 0;
+    session.stats.cheatsheetsCreated = session.stats.cheatsheetsCreated || 0;
     session.stats.testsCompleted = session.stats.testsCompleted || 0;
     session.stats.messagesCount = session.stats.messagesCount || 0;
     session.stats.duelsPlayed = session.stats.duelsPlayed || 0;
@@ -96,6 +98,11 @@ function recordMessage(session) {
 function recordTopicExplained(session) {
   ensureStats(session);
   session.stats.topicsExplained += 1;
+}
+
+function recordCheatsheetCreated(session) {
+  ensureStats(session);
+  session.stats.cheatsheetsCreated += 1;
 }
 
 function recordTestCompleted(session) {
@@ -149,5 +156,6 @@ module.exports = {
   ensureReferralFields,
   recordMessage,
   recordTopicExplained,
+  recordCheatsheetCreated,
   recordTestCompleted,
 };

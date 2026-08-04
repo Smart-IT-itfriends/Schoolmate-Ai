@@ -343,8 +343,214 @@
       "finishedAt": "2026-07-29T08:03:24.490Z",
       "winnerId": "8759683710",
       "result": "win_a"
+    },
+    {
+      "id": "dmsemey9mda93",
+      "player1Id": "8759683710",
+      "player2Id": "7664893170",
+      "player1ChatId": 8759683710,
+      "player2ChatId": 7664893170,
+      "player1Name": "Максим",
+      "player2Name": "Рейм",
+      "status": "finished",
+      "currentQuestion": 4,
+      "scores": {
+        "8759683710": 0,
+        "7664893170": 0
+      },
+      "answers": {
+        "0": {
+          "messageIds": {
+            "8759683710": 1699,
+            "7664893170": 1700
+          },
+          "7664893170": {
+            "optionIndex": 2,
+            "answeredAt": "2026-08-04T12:15:02.911Z",
+            "elapsedMs": 9921,
+            "isCorrect": false,
+            "points": 0
+          },
+          "8759683710": {
+            "optionIndex": 1,
+            "answeredAt": "2026-08-04T12:15:06.242Z",
+            "elapsedMs": 13252,
+            "isCorrect": false,
+            "points": 0
+          }
+        },
+        "1": {
+          "messageIds": {
+            "8759683710": 1710,
+            "7664893170": 1711
+          },
+          "8759683710": {
+            "optionIndex": 1,
+            "answeredAt": "2026-08-04T12:15:09.505Z",
+            "elapsedMs": 2850,
+            "isCorrect": false,
+            "points": 0
+          },
+          "7664893170": {
+            "optionIndex": 3,
+            "answeredAt": "2026-08-04T12:15:18.014Z",
+            "elapsedMs": 11359,
+            "isCorrect": false,
+            "points": 0
+          }
+        },
+        "2": {
+          "messageIds": {
+            "8759683710": 1720,
+            "7664893170": 1721
+          },
+          "8759683710": {
+            "optionIndex": 2,
+            "answeredAt": "2026-08-04T12:15:25.020Z",
+            "elapsedMs": 6599,
+            "isCorrect": false,
+            "points": 0
+          },
+          "7664893170": {
+            "optionIndex": null,
+            "answeredAt": "2026-08-04T12:15:38.430Z",
+            "elapsedMs": 20000,
+            "isCorrect": false,
+            "points": 0,
+            "timeout": true
+          }
+        },
+        "3": {
+          "messageIds": {
+            "8759683710": 1726,
+            "7664893170": 1727
+          },
+          "7664893170": {
+            "optionIndex": 1,
+            "answeredAt": "2026-08-04T12:15:47.971Z",
+            "elapsedMs": 9240,
+            "isCorrect": false,
+            "points": 0
+          },
+          "8759683710": {
+            "optionIndex": 1,
+            "answeredAt": "2026-08-04T12:15:52.141Z",
+            "elapsedMs": 13410,
+            "isCorrect": false,
+            "points": 0
+          }
+        },
+        "4": {
+          "messageIds": {
+            "8759683710": 1732,
+            "7664893170": 1733
+          },
+          "7664893170": {
+            "optionIndex": 2,
+            "answeredAt": "2026-08-04T12:15:54.907Z",
+            "elapsedMs": 2294,
+            "isCorrect": false,
+            "points": 0
+          },
+          "8759683710": {
+            "optionIndex": 1,
+            "answeredAt": "2026-08-04T12:16:07.264Z",
+            "elapsedMs": 14651,
+            "isCorrect": false,
+            "points": 0
+          }
+        }
+      },
+      "questions": [
+        {
+          "question": "Choose the correct form: 'By the time we arrived, the film ____.'",
+          "options": [
+            "had already started",
+            "already started",
+            "has already started",
+            "already starts"
+          ],
+          "correctIndex": 0
+        },
+        {
+          "question": "Select the correct modal verb: 'You ____ take an umbrella; it's going to rain.'",
+          "options": [
+            "should",
+            "could",
+            "might",
+            "have to"
+          ],
+          "correctIndex": 0
+        },
+        {
+          "question": "Which sentence is in the Passive Voice?",
+          "options": [
+            "The book was written by a famous author.",
+            "The author wrote the book.",
+            "The author is writing the book.",
+            "The author will write the book."
+          ],
+          "correctIndex": 0
+        },
+        {
+          "question": "Choose the correct preposition: 'She is really interested ____ learning new languages.'",
+          "options": [
+            "in",
+            "at",
+            "on",
+            "with"
+          ],
+          "correctIndex": 0
+        },
+        {
+          "question": "Identify the correct reported speech: 'He said, \"I am busy now.\"'",
+          "options": [
+            "He said that he was busy then.",
+            "He said that he is busy now.",
+            "He said that he was busy now.",
+            "He said that he is busy then."
+          ],
+          "correctIndex": 0
+        }
+      ],
+      "questionStartedAt": "2026-08-04T12:15:52.613Z",
+      "class": 11,
+      "subject": "Англійська мова",
+      "vsAi": false,
+      "createdAt": "2026-08-04T12:14:51.130Z",
+      "finishedAt": "2026-08-04T12:16:07.395Z",
+      "winnerId": null,
+      "result": "draw"
     }
   ],
   "matchmakingPool": [],
-  "invites": []
+  "invites": [
+    {
+      "id": "invmsem6emm4454",
+      "code": "8D4043",
+      "fromUserId": "8759683710",
+      "fromChatId": 8759683710,
+      "fromName": "Максим",
+      "fromClass": 5,
+      "fromSubject": "Англійська мова",
+      "toUserId": "8258735722",
+      "status": "cancelled",
+      "createdAt": "2026-08-04T12:08:12.430Z",
+      "expiresAt": "2026-08-04T12:23:12.430Z"
+    },
+    {
+      "id": "invmsemewjp56aa",
+      "code": "3B0CD8",
+      "fromUserId": "8759683710",
+      "fromChatId": 8759683710,
+      "fromName": "Максим",
+      "fromClass": 5,
+      "fromSubject": "Англійська мова",
+      "toUserId": "7664893170",
+      "status": "accepted",
+      "createdAt": "2026-08-04T12:14:48.902Z",
+      "expiresAt": "2026-08-04T12:29:48.902Z",
+      "acceptedBy": "7664893170"
+    }
+  ]
 }

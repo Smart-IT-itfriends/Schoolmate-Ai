@@ -39,7 +39,7 @@
         "completedAt": null
       },
       "daily_hero": {
-        "currentProgress": 0,
+        "currentProgress": 1,
         "isCompleted": false,
         "completedAt": null
       }
@@ -56,7 +56,7 @@
         "completedAt": null
       },
       "test_runner": {
-        "currentProgress": 0,
+        "currentProgress": 1,
         "isCompleted": false,
         "completedAt": null
       },
