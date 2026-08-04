@@ -81,13 +81,13 @@
     "dailyStreak": 2,
     "totalAiRequests": 13,
     "hasFreezeItem": false,
-    "lastActivityDate": "2026-08-04T11:14:51.271Z",
+    "lastActivityDate": "2026-08-04T11:58:56.995Z",
     "timezone": "Europe/Kyiv",
     "aiRequests": 1,
     "stats": {
       "topicsExplained": 3,
       "testsCompleted": 3,
-      "messagesCount": 167,
+      "messagesCount": 190,
       "duelsPlayed": 2,
       "duelsWon": 1
     },

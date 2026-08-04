@@ -3,20 +3,54 @@ const { getSubjectsForClass } = require('../subjects');
 const mainKeyboard = {
   reply_markup: {
     keyboard: [
-      ['📚 Пояснити тему', '🧠 Створити тест'],
-      ['⚔️ Дуель знань', '📊 Статистика'],
-      ['📈 Мій прогрес', '👤 Мій профіль'],
-      ['🏆 Лідерборд'],
-      ['👥 Запросити друга'],
-      ['🏆 Квести'],
-      ['📝 Додати КР', '📅 Мої КР'],
-      ['🎁 Забрати нагороду', '🎡 Щоденна рулетка'],
-      ['📖 Предмети'],
-      ['⭐ Premium', '⚙️ Допомога'],
-      ['💬 Підтримка / Запитання'],
-      ['🌐 Глобальний чат'],
-      ['🎰 Рулетка XP', '🃏 Покер'],
-      ['🔄 Перереєструватися'],
+      ['📚 Навчання', '🏆 Нагороди'],
+      ['🎮 Розваги', '⚙️ Сервіс'],
+    ],
+    resize_keyboard: true,
+    one_time_keyboard: false,
+  },
+};
+
+const educationKeyboard = {
+  reply_markup: {
+    keyboard: [
+      ['📚 Пояснити тему', '🧠 Створити тест', '⚔️ Дуель знань'],
+      ['📊 Статистика', '📈 Мій прогрес', '👤 Мій профіль'],
+      ['🏆 Квести', '📖 Предмети', '📝 Додати КР'],
+      ['📅 Мої КР', '⬅️ Назад'],
+    ],
+    resize_keyboard: true,
+    one_time_keyboard: false,
+  },
+};
+
+const rewardsKeyboard = {
+  reply_markup: {
+    keyboard: [
+      ['🎁 Забрати нагороду', '🎡 Щоденна рулетка', '⭐ Premium'],
+      ['🏆 Лідерборд', '⬅️ Назад'],
+    ],
+    resize_keyboard: true,
+    one_time_keyboard: false,
+  },
+};
+
+const entertainmentKeyboard = {
+  reply_markup: {
+    keyboard: [
+      ['👥 Запросити друга', '🌐 Глобальний чат', '🎰 Рулетка XP'],
+      ['🃏 Покер', '⚙️ Допомога', '⬅️ Назад'],
+    ],
+    resize_keyboard: true,
+    one_time_keyboard: false,
+  },
+};
+
+const serviceKeyboard = {
+  reply_markup: {
+    keyboard: [
+      ['⚙️ Допомога', '💬 Підтримка / Запитання', '🔄 Перереєструватися'],
+      ['⬅️ Назад'],
     ],
     resize_keyboard: true,
     one_time_keyboard: false,
@@ -74,6 +108,10 @@ function buildSubjectsKeyboard(classNum) {
 
 module.exports = {
   mainKeyboard,
+  educationKeyboard,
+  rewardsKeyboard,
+  entertainmentKeyboard,
+  serviceKeyboard,
   backKeyboard,
   getActionKeyboard,
   buildSubjectActionKeyboard,

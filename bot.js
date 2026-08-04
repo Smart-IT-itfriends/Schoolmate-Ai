@@ -42,7 +42,7 @@ const userStates = {};
 bot.userStates = userStates;
 const allSubjects = getAllSubjects();
 
-const { mainKeyboard, backKeyboard } = keyboards;
+const { mainKeyboard, educationKeyboard, rewardsKeyboard, entertainmentKeyboard, serviceKeyboard, backKeyboard } = keyboards;
 
 const progressKeyboard = {
   reply_markup: {
@@ -108,6 +108,20 @@ function showMainMenu(chatId, session) {
     `Привіт, ${session.name}! 👋\n\n${config.messages.start}`,
     mainKeyboard
   );
+}
+
+function showSectionMenu(chatId, section) {
+  const sections = {
+    education: { keyboard: educationKeyboard, title: '📚 Навчання' },
+    rewards: { keyboard: rewardsKeyboard, title: '🏆 Нагороди' },
+    entertainment: { keyboard: entertainmentKeyboard, title: '🎮 Розваги' },
+    service: { keyboard: serviceKeyboard, title: '⚙️ Сервіс' },
+  };
+
+  const sectionData = sections[section] || sections.education;
+  userStates[chatId] = `submenu_${section}`;
+
+  bot.sendMessage(chatId, `📌 Розділ ${sectionData.title}\nОберіть дію:`, sectionData.keyboard);
 }
 
 function getSubjectHint(session) {
@@ -1476,6 +1490,31 @@ bot.on('message', async (msg) => {
 
   if (text === '🔄 Перереєструватися') {
     registration.startRegistration(bot, chatId, msg.from, true);
+    return;
+  }
+
+  if (text === '📚 Навчання') {
+    showSectionMenu(chatId, 'education');
+    return;
+  }
+
+  if (text === '🏆 Нагороди') {
+    showSectionMenu(chatId, 'rewards');
+    return;
+  }
+
+  if (text === '🎮 Розваги') {
+    showSectionMenu(chatId, 'entertainment');
+    return;
+  }
+
+  if (text === '⚙️ Сервіс') {
+    showSectionMenu(chatId, 'service');
+    return;
+  }
+
+  if (text === '⬅️ Назад') {
+    showMainMenu(chatId, session);
     return;
   }
 
