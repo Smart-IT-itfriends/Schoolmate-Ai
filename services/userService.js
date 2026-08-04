@@ -3,7 +3,37 @@ const path = require('path');
 const config = require('../config');
 const rankService = require('./rankService');
 
-const USERS_FILE = path.join(__dirname, '..', 'data', 'users.json');
+const USERS_FILE = process.env.USERS_FILE || path.join(__dirname, '..', 'data', 'users.json');
+
+function ensureReferralFields(session) {
+  if (!session) {
+    return session;
+  }
+
+  if (!session.referralCode) {
+    session.referralCode = null;
+  }
+  if (session.referredBy === undefined) {
+    session.referredBy = null;
+  }
+  if (!session.referralsCount) {
+    session.referralsCount = 0;
+  }
+  if (!Array.isArray(session.referredUsers)) {
+    session.referredUsers = [];
+  }
+  if (session.referralRewardClaimed === undefined) {
+    session.referralRewardClaimed = false;
+  }
+  if (!session.referralRewardsDate) {
+    session.referralRewardsDate = null;
+  }
+  if (!session.referralRewardsToday) {
+    session.referralRewardsToday = 0;
+  }
+
+  return session;
+}
 
 let levelUpNotifier = null;
 
@@ -52,6 +82,8 @@ function ensureStats(session) {
   if (!Number.isFinite(session.duelRating)) {
     session.duelRating = 1000;
   }
+
+  ensureReferralFields(session);
 
   return session.stats;
 }
@@ -114,6 +146,7 @@ module.exports = {
   setLevelUpNotifier,
   getDefaultStats,
   ensureStats,
+  ensureReferralFields,
   recordMessage,
   recordTopicExplained,
   recordTestCompleted,
