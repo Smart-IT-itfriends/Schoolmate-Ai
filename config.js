@@ -48,7 +48,7 @@ module.exports = {
   },
 
   admin: {
-    usernames: ['max_misiura', 'shahed1ch', 'belyaev_mark', 'reim2444'],
+    usernames: ['max_misiura', 'shahed1ch', 'belyaev_mark', 'reim2444', 'itiredbro'],
     allowedIds: [],
     auditLogFile: 'data/admin_audit.log',
     activeMinutes: 15,
