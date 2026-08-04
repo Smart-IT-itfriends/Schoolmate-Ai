@@ -18,6 +18,7 @@ const questHandler = require('./handlers/quests');
 const supportHandler = require('./handlers/support');
 const globalChatHandler = require('./handlers/globalChat');
 const rouletteHandler = require('./handlers/roulette');
+const pokerHandler = require('./handlers/poker');
 const dailySpinHandler = require('./handlers/dailySpin');
 const globalChatService = require('./services/globalChatService');
 const { createGlobalChatServer } = require('./services/globalChatRealtime');
@@ -962,6 +963,17 @@ bot.onText(/\/roulette(?:@\w+)?/, async (msg) => {
   rouletteHandler.startRoulette(bot, chatId, userId, session, userStates, config);
 });
 
+bot.onText(/\/poker(?:@\w+)?/, async (msg) => {
+  const chatId = msg.chat.id;
+  const userId = msg.from.id;
+  const session = getSession(userId);
+  if (!session || session.step !== 'completed') {
+    await bot.sendMessage(chatId, 'Спочатку заверши реєстрацію через /start');
+    return;
+  }
+  pokerHandler.startPoker(bot, chatId, userId, session, userStates, config);
+});
+
 bot.onText(/\/global_chat(?:@\w+)?/, async (msg) => {
   const chatId = msg.chat.id;
   const userId = msg.from.id;
@@ -996,6 +1008,10 @@ bot.on('callback_query', async (query) => {
   }
 
   if (await rouletteHandler.handleRouletteCallback(bot, query, session, userStates, config, saveSession)) {
+    return;
+  }
+
+  if (await pokerHandler.handlePokerCallback(bot, query, session, userStates, config, saveSession)) {
     return;
   }
 
@@ -1368,6 +1384,24 @@ bot.on('message', async (msg) => {
     return;
   }
 
+  if (pokerHandler.isPokerMenuText(text)) {
+    if (session.step !== 'completed') {
+      bot.sendMessage(chatId, 'Спочатку заверши реєстрацію через /start');
+      return;
+    }
+    pokerHandler.startPoker(bot, chatId, userId, session, userStates, config);
+    return;
+  }
+
+  if (pokerHandler.isLeavePokerText(text)) {
+    pokerHandler.leavePoker(bot, chatId, userId, userStates);
+    return;
+  }
+
+  if (await pokerHandler.handlePokerMessage(bot, chatId, userId, text, session, userStates, config, saveSession)) {
+    return;
+  }
+
   if (duelHandler.handleDuelMessage(bot, chatId, userId, text, session, userStates, config)) {
     return;
   }
@@ -1382,6 +1416,7 @@ bot.on('message', async (msg) => {
     supportHandler.clearSupportState(chatId, userId, userStates);
     globalChatHandler.clearGlobalChatState(chatId, userId, userStates);
     rouletteHandler.clearRouletteState(chatId, userId, userStates);
+    pokerHandler.clearPokerState(chatId, userId, userStates);
     showMainMenu(chatId, session);
     return;
   }
@@ -1525,6 +1560,7 @@ bot.on('message', async (msg) => {
     supportHandler.clearSupportState(chatId, userId, userStates);
     globalChatHandler.clearGlobalChatState(chatId, userId, userStates);
     rouletteHandler.clearRouletteState(chatId, userId, userStates);
+    pokerHandler.clearPokerState(chatId, userId, userStates);
     if (session.examDraft) {
       delete session.examDraft;
       saveSession(userId, session);
@@ -1610,6 +1646,7 @@ async function startBot() {
     { command: 'unban', description: 'Розблокувати користувача' },
     { command: 'global_chat', description: 'Глобальний чат з онлайн-користувачами' },
     { command: 'roulette', description: 'Рулетка XP — ставка та випадковий результат' },
+    { command: 'poker', description: 'Покер XP — дро-покер або техаський холдем' },
     { command: 'daily_spin', description: 'Щоденна рулетка — безкоштовний оберт' },
     { command: 'set_level', description: 'Встановити рівень користувача (адмін)' },
     { command: 'ranks', description: 'Таблиця рангів (адмін)' },
