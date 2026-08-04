@@ -20,8 +20,10 @@ const globalChatHandler = require('./handlers/globalChat');
 const rouletteHandler = require('./handlers/roulette');
 const pokerHandler = require('./handlers/poker');
 const dailySpinHandler = require('./handlers/dailySpin');
+const referralHandler = require('./handlers/referral');
 const globalChatService = require('./services/globalChatService');
 const { createGlobalChatServer } = require('./services/globalChatRealtime');
+const referralService = require('./services/referralService');
 const examScheduler = require('./services/examScheduler');
 const premiumService = require('./services/premiumService');
 const leaderboardService = require('./services/leaderboardService');
@@ -158,6 +160,7 @@ function buildProfileMessage(session, user) {
     `📚 <b>Предмет:</b> ${subjectText}`,
     `⭐ <b>Premium:</b> ${premiumLabel}`,
     `⚔️ <b>Рейтинг дуелей:</b> ${session.duelRating || 1000}`,
+    `👥 <b>Запрошено друзів:</b> ${session.referralsCount || 0}`,
     `📅 <b>Дата реєстрації:</b> ${registeredLabel}`,
     `🤖 <b>Звернень до AI:</b> ${session.totalAiRequests || 0}`,
     `🔥 <b>Стрік:</b> ${session.dailyStreak || 0} днів`,
@@ -506,6 +509,7 @@ bot.onText(/\/start/, (msg) => {
   const chatId = msg.chat.id;
   const user = msg.from;
   const session = getSession(user.id);
+  const referralPayload = referralService.parseStartPayload(msg.text || '');
 
   if (session && session.step === 'completed') {
     applyInactivityCheck(chatId, user.id, session);
@@ -514,7 +518,20 @@ bot.onText(/\/start/, (msg) => {
     return;
   }
 
-  registration.startRegistration(bot, chatId, user);
+  registration.startRegistration(bot, chatId, user, false, referralPayload);
+});
+
+bot.onText(/\/referral/, (msg) => {
+  const chatId = msg.chat.id;
+  const userId = msg.from.id;
+  const session = getSession(userId);
+
+  if (!session || session.step !== 'completed') {
+    bot.sendMessage(chatId, 'Спочатку заверши реєстрацію через /start');
+    return;
+  }
+
+  referralHandler.showReferralProgram(bot, chatId, userId, session, config);
 });
 
 bot.onText(/\/add_exam/, (msg) => {
@@ -1003,6 +1020,10 @@ bot.on('callback_query', async (query) => {
   const user = query.from;
   const data = String(query.data || '');
 
+  if (referralHandler.handleReferralCallback(bot, query, config)) {
+    return;
+  }
+
   if (await globalChatHandler.handleGlobalChatCallback(bot, query, config)) {
     return;
   }
@@ -1283,6 +1304,10 @@ bot.on('message', async (msg) => {
   userService.recordMessage(session);
   saveSession(userId, session);
 
+  if (referralHandler.handleReferralRegistrationStep(bot, chatId, userId, text, session, config, saveSession)) {
+    return;
+  }
+
   if (session.step === 'name') {
     if (text.length < 2) {
       bot.sendMessage(chatId, 'Будь ласка, введи своє ім\'я (мінімум 2 символи).');
@@ -1290,6 +1315,15 @@ bot.on('message', async (msg) => {
     }
 
     session.name = text;
+    saveSession(userId, session);
+
+    if (session.referralEligible && !session.referredBy) {
+      session.step = 'referral';
+      saveSession(userId, session);
+      referralHandler.askForReferralCode(bot, chatId);
+      return;
+    }
+
     session.step = 'class';
     saveSession(userId, session);
 
@@ -1314,6 +1348,20 @@ bot.on('message', async (msg) => {
     session.hasFreezeItem = session.hasFreezeItem || false;
     session.lastActivityDate = new Date().toISOString();
     session.timezone = session.timezone || config.exams.defaultTimezone;
+
+    const shouldProcessReferral = session.referralEligible && session.referredBy && !session.referralRewardClaimed;
+    saveSession(userId, session);
+
+    if (shouldProcessReferral) {
+      const referralResult = referralService.processReferralReward(userId, config);
+      if (referralResult.success) {
+        const updatedSession = getSession(userId);
+        referralHandler.notifyReferralRewards(bot, chatId, userId, referralResult, config);
+        Object.assign(session, updatedSession);
+      }
+    }
+
+    referralService.getOrCreateReferralCode(userId, session);
     saveSession(userId, session);
 
     bot.sendMessage(
@@ -1525,6 +1573,12 @@ bot.on('message', async (msg) => {
     return;
   }
 
+  if (matchesMenuText(text, '👥 Запросити друга')) {
+    userStates[chatId] = 'viewing_referral';
+    referralHandler.showReferralProgram(bot, chatId, userId, session, config);
+    return;
+  }
+
   if (matchesMenuText(text, '🎁 Забрати нагороду')) {
     handleDailyReward(chatId, userId, session);
     return;
@@ -1622,6 +1676,8 @@ async function startBot() {
   userService.setLevelUpNotifier((userId, fromLevel, toLevel, session) => {
     levelUpHandler.queueLevelUp(bot, userId, fromLevel, toLevel, session, config);
   });
+  const me = await bot.getMe();
+  bot.botUsername = me.username;
 
   await bot.deleteWebHook({ drop_pending_updates: true });
   await bot.startPolling({ restart: true });
@@ -1633,6 +1689,7 @@ async function startBot() {
     { command: 'duel', description: 'Дуель знань — пошук, друг по ID або код' },
     { command: 'premium', description: 'Статус Premium (фото та голос)' },
     { command: 'quests', description: 'Твої квести та прогрес' },
+    { command: 'referral', description: 'Реферальна програма — запроси друга' },
     { command: 'leaderboard', description: 'Топ-100 користувачів за XP' },
     { command: 'profile', description: 'Твій профіль, ранг та прогрес' },
     { command: 'me', description: 'Твій профіль (alias)' },
